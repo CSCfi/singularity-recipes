@@ -1,0 +1,296 @@
+## r-env-singularity 4.0.2 (Singularity container)
+
+## includes: R, RStudio Server, GDAL + Saga-GIS, CGet, Mellanox OFED, OpenMPI, 
+## Intel MKL, Texlive (RMarkdown support)
+
+Bootstrap: docker
+From: ubuntu:18.04
+
+%labels
+
+  licensing_info="/usr/licensing.txt" 
+  maintainer=Jesse Harrison <jesse.harrison@csc.fi>
+
+%files
+
+## License information files
+
+  licensing.txt /usr/licensing.txt
+  intel-simplified-software-license.txt /usr/intel-simplified-software-license.txt
+
+## Files for RStudio Server
+## (From rocker-versioned GitHub: https://github.com/rocker-org/rocker-versioned)
+
+  disable_auth_rserver.conf /etc/rstudio/disable_auth_rserver.conf
+  pam-helper.sh /usr/lib/rstudio-server/bin/pam-helper
+  userconf.sh /etc/cont-init.d/userconf
+
+%post
+
+## Make RStudio pam-helper and userconf executable
+
+  cd /usr/lib/rstudio-server/bin && chmod +x pam-helper
+  cd /etc/cont-init.d && chmod +x userconf
+  cd
+
+## Env variables for installations
+
+  export R_VERSION=4.0.2
+  export RSTUDIO_VERSION=${RSTUDIO_VERSION:-1.3.1093}
+  export S6_VERSION=${1:-${S6_VERSION:-v1.21.7.0}}
+  export S6_BEHAVIOUR_IF_STAGE2_FAILS=2
+  export PATH=/usr/lib/rstudio-server/bin:$PATH
+  export PANDOC_TEMPLATES_VERSION=${PANDOC_TEMPLATES_VERSION:-2.9}
+  export CRAN=${CRAN:-https://cloud.r-project.org/}
+  export LC_ALL=C.UTF-8
+  export LANG=C.UTF-8
+  export TERM=xterm
+  export BUILD_DATE=2020-09-24
+  export DEBIAN_FRONTEND=noninteractive
+  export OMPI_CC=gcc
+  export CC=gcc
+  unset TMPDIR
+
+## Extra variables for MKL installation and linking
+
+  export MKLROOT=/opt/intel/compilers_and_libraries_2020.0.166/linux/mkl
+  export PKG_CONFIG_PATH=/opt/intel/compilers_and_libraries_2020.0.166/linux/mkl/bin/pkgconfig:/opt/intel/compilers_and_libraries_2020.0.166/linux/mkl/bin/pkgconfig
+  export LD_LIBRARY_PATH=/opt/intel/compilers_and_libraries_2020.0.166/linux/tbb/lib/intel64_lin/gcc4.7:/opt/intel/compilers_and_libraries_2020.0.166/linux/compiler/lib/intel64_lin:/opt/intel/compilers_and_libraries_2020.0.166/linux/mkl/lib/intel64_lin:/opt/intel/compilers_and_libraries_2020.0.166/linux/tbb/lib/intel64_lin/gcc4.7:/opt/intel/compilers_and_libraries_2020.0.166/linux/compiler/lib/intel64_lin:/opt/intel/compilers_and_libraries_2020.0.166/linux/mkl/lib/intel64_lin
+  export LIBRARY_PATH=/opt/intel/compilers_and_libraries_2020.0.166/linux/tbb/lib/intel64_lin/gcc4.7:/opt/intel/compilers_and_libraries_2020.0.166/linux/compiler/lib/intel64_lin:/opt/intel/compilers_and_libraries_2020.0.166/linux/mkl/lib/intel64_lin:/opt/intel/compilers_and_libraries_2020.0.166/linux/tbb/lib/intel64_lin/gcc4.7:/opt/intel/compilers_and_libraries_2020.0.166/linux/compiler/lib/intel64_lin:/opt/intel/compilers_and_libraries_2020.0.166/linux/mkl/lib/intel64_lin
+  export NLSPATH=/opt/intel/compilers_and_libraries_2020.0.166/linux/mkl/lib/intel64_lin/locale/%l_%t/%N:/opt/intel/compilers_and_libraries_2020.0.166/linux/mkl/lib/intel64_lin/locale/%l_%t/%N
+  export CPATH=/opt/intel/compilers_and_libraries_2020.0.166/linux/mkl/include:/opt/intel/compilers_and_libraries_2020.0.166/linux/mkl/include
+  export PKG_CONFIG_PATH=/opt/intel/compilers_and_libraries_2020.0.166/linux/mkl/bin/pkgconfig:/opt/intel/compilers_and_libraries_2020.0.166/linux/mkl/bin/pkgconfig
+
+  MKL="-L$MKLROOT/lib/intel64	\
+	-Wl,--no-as-needed	\
+	-lmkl_gf_lp64		\
+  	-lmkl_gnu_thread	\
+  	-lmkl_core -lgomp	\
+  	-lpthread -lm -ldl"
+
+## Libraries for R + RStudio basic installation
+
+  apt-get -y update
+  apt-get -y install gnupg software-properties-common tzdata \
+                     gdebi-core libasound2 libnss3 libegl1-mesa libxkbcommon-x11-0 libgl1-mesa-glx libxtst6 wget \
+                     build-essential
+
+## Further libraries
+
+  apt-get -y install libcurl4-openssl-dev libssl-dev libssh2-1-dev libxml2-dev libgsl-dev libhdf5-dev libpq-dev \
+                      xorg libx11-dev libglu1-mesa-dev libfreetype6-dev tk8.6-dev default-jre default-jdk \
+                      libudunits2-dev openssh-client openssh-server libssh-dev libgmp-dev libmpfr-dev \
+                      libmagick++-dev libnetcdf-dev libpoppler-cpp-dev jags libproj-dev libwxgtk3.0-dev \
+                      libexpat1-dev wx-common libogdi3.2-dev unixodbc-dev git dh-autoreconf libfftw3-3 \
+                      libfftw3-dev libgeos-dev libfontconfig1-dev glpk-utils libglpk-dev gawk valgrind \
+		      libreadline-dev gfortran make lsof tmux sudo libpcre2-dev libv8-dev liblwgeom-dev
+
+## Dist-upgrade (more recent GLIBC)
+
+  add-apt-repository ppa:ubuntu-toolchain-r/test 
+  apt-get -y update
+  apt-get -y upgrade
+  apt-get -y dist-upgrade
+
+## Intel MKL 2020
+
+  wget https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2019.PUB
+  apt-key add GPG-PUB-KEY-INTEL-SW-PRODUCTS-2019.PUB
+  sh -c 'echo deb https://apt.repos.intel.com/mkl all main > /etc/apt/sources.list.d/intel-mkl.list'
+
+  apt-get -y update
+  apt-get -y install intel-mkl-64bit-2020.0-088
+
+## R 4.0.2
+
+  wget https://cran.rstudio.com/src/base/R-4/R-${R_VERSION}.tar.gz
+  tar -xzvf R-${R_VERSION}.tar.gz
+  cd R-${R_VERSION}
+
+  ./configure 			\
+	--prefix=/usr		\
+	--with-blas="$MKL"	\
+	--with-lapack		\
+	--enable-R-shlib
+  make -j4 && make install
+  R CMD javareconf
+  cd
+
+## GDAL + SAGA from ubuntugis 
+## GDAL 2.4.2 (default Ubuntu 18 version is 2.2.3), saga 7.3.0 (22 Apr 2020)
+
+  add-apt-repository -y ppa:ubuntugis/ppa
+  apt-get -y update && apt-get -y upgrade
+  apt-get -y install gdal-bin libgdal-dev saga
+
+## Set date-locked MRAN snapshot of CRAN
+
+  if [ -z "$BUILD_DATE" ]; then MRAN=$CRAN; \
+  else MRAN=https://cran.microsoft.com/snapshot/${BUILD_DATE}; fi
+  echo MRAN=$MRAN >> /etc/environment
+  echo "options(repos = c(CRAN='$MRAN'), download.file.method = 'libcurl')" >> /usr/lib/R/etc/Rprofile.site
+  
+## Fix R package libpaths (helps RStudio Server find the right directories)
+
+  echo "R_LIBS_USER='/usr/lib/R/library'" >> \
+  	/usr/lib/R/etc/Renviron
+  echo "R_LIBS_SITE='/appl/soft/math/r-env-singularity/4.0.2/4.0.2-rpackages'" >> \
+  	/usr/lib/R/etc/Renviron	
+
+## S6 supervisor
+
+  wget -P /tmp/ https://github.com/just-containers/s6-overlay/releases/download/${S6_VERSION}/s6-overlay-amd64.tar.gz
+  tar hzxf /tmp/s6-overlay-amd64.tar.gz -C / --exclude=usr/bin/execlineb
+  tar hzxf /tmp/s6-overlay-amd64.tar.gz -C /usr ./bin/execlineb && $_clean
+	
+## RStudio Server & dependencies (note: git installed earlier)
+
+  apt-get update
+  apt-get install -y \
+  file \
+  libapparmor1 \
+  libclang-dev \
+  libcurl4-openssl-dev \
+  libedit2 \
+  libssl-dev \
+  lsb-release \
+  multiarch-support \
+  psmisc \
+  procps \
+  python-setuptools
+
+  RSTUDIO_URL="http://download2.rstudio.org/server/bionic/amd64/rstudio-server-${RSTUDIO_VERSION}-amd64.deb"
+  wget -q $RSTUDIO_URL
+  dpkg -i rstudio-server-*-amd64.deb
+  rm rstudio-server-*-amd64.deb
+
+## Symlink pandoc & standard pandoc templates for system-wide use
+
+  ln -s /usr/lib/rstudio-server/bin/pandoc/pandoc /usr/bin
+  ln -s /usr/lib/rstudio-server/bin/pandoc/pandoc-citeproc /usr/bin
+  git clone --recursive --branch ${PANDOC_TEMPLATES_VERSION} https://github.com/jgm/pandoc-templates
+  mkdir -p /opt/pandoc/templates
+  cp -r pandoc-templates*/* /opt/pandoc/templates && rm -rf pandoc-templates*
+  mkdir /root/.pandoc && ln -s /opt/pandoc/templates /root/.pandoc/templates
+  apt-get clean
+  rm -rf /var/lib/apt/lists/
+
+## RStudio wants an /etc/R, will populate from $R_HOME/etc
+
+  mkdir -p /etc/R
+  echo 'if(is.na(Sys.getenv("HTTR_LOCALHOST", unset=NA))) { options(httr_oob_default = TRUE) }' >> /usr/lib/R/etc/Rprofile.site
+  echo "PATH=${PATH}" >> /usr/lib/R/etc/Renviron
+
+## Use more robust file locking to avoid errors when using shared volumes
+
+  echo 'lock-type=advisory' >> /etc/rstudio/file-locks
+
+## Texlive + a few R packages for RMarkdown
+
+  apt-get update && apt-get install -y --no-install-recommends \
+                                          pandoc \
+                                          texlive \
+                                          texlive-latex-extra \
+			                  texlive-plain-generic \
+					  texlive-fonts-recommended \
+				          lmodern
+
+  R --slave -e 'install.packages("tinytex",repos = "https://cran.rstudio.com/")'
+  R --slave -e 'install.packages("blogdown",repos = "https://cran.rstudio.com/")'
+  R --slave -e 'install.packages("bookdown",repos = "https://cran.rstudio.com/")'
+  R --slave -e 'install.packages("rticles",repos = "https://cran.rstudio.com/")'
+  R --slave -e 'install.packages("rmdshower",repos = "https://cran.rstudio.com/")'
+  R --slave -e 'install.packages("xaringan",repos = "https://cran.rstudio.com/")'
+
+## CGet
+
+  apt-get -y update
+  apt-get install python3-pip --yes
+  pip3 install cget
+  apt-get clean
+
+## Mellanox OFED and OpenMPI 4.0.2
+
+  apt-get -y update
+  apt-get -y install apt-transport-https gpg rpm
+  apt-get -y update && apt-get -y upgrade
+  wget -qO - https://www.mellanox.com/downloads/ofed/RPM-GPG-KEY-Mellanox | apt-key add - 
+  cd /etc/apt/sources.list.d/
+  wget https://linux.mellanox.com/public/repo/mlnx_ofed/4.7-1.0.0.1/ubuntu18.04/mellanox_mlnx_ofed.list
+  apt-get -y update
+  apt-get -y install gfortran make \
+    libnl-3-200 libnl-route-3-200
+  apt -y install libibverbs1 && \
+    apt -y install libibverbs-dev && \
+    apt -y install libmlx5-1 && \
+    apt -y install openmpi && \
+    apt -y install libibcm1 && \
+    apt -y install ucx
+  export OMPI_DIR=/usr/mpi/gcc/openmpi-4.0.2rc3
+  export PATH=$OMPI_DIR/bin:$PATH
+  export LD_LIBRARY_PATH=$OMPI_DIR/lib:$LD_LIBRARY_PATH  
+  cd /opt && make -f Makefile_p2p
+
+%environment
+
+## General environment variables
+
+  export LC_ALL=C.UTF-8
+  export LANG=C.UTF-8
+  export BUILD_DATE=2020-09-24
+  export CC=gcc
+  unset MANPATH
+
+## OpenMPI environment variables
+
+  export PMIX_MCA_gds=hash
+  export OMPI_DIR=/usr/mpi/gcc/openmpi-4.0.2rc3
+  export SINGULARITYENV_APPEND_PATH=$OMPI_DIR/bin
+  export SINGULARITYENV_APPEND_LD_LIBRARY_PATH=$OMPI_DIR/lib
+  export OMPI_CC=gcc
+  export UCX_TLS=ib,posix,self 
+
+## R environment variables
+
+  export CRAN=${CRAN:-https://cloud.r-project.org/}
+  export PATH=/usr/lib/rstudio-server/bin:$PATH
+  export PATH=/appl/soft/math/r-env-singularity/4.0.2/4.0.2-rpackages/snow:$PATH
+  export PATH=/appl/soft/math/r-env-singularity/4.0.2/4.0.2-rpackages/Rmpi:$PATH
+  export PATH=/appl/opt/cluster_studio_xe2019/compilers_and_libraries/linux/bin/intel64:$PATH
+  export PATH=/appl/opt/cluster_studio_xe2019/debugger_2019/gdb/intel64/bin:$PATH
+  export R_LIBS_USER=/usr/lib/R/library
+  export R_LIBS_SITE=/appl/soft/math/r-env-singularity/4.0.2/4.0.2-rpackages
+  export PANDOC_TEMPLATES_VERSION=${PANDOC_TEMPLATES_VERSION:-2.9}
+  export TERM=xterm
+  export TZ=Europe/Helsinki
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/mpi/gcc/openmpi-4.0.2rc3/lib
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/intel/mkl/lib/intel64
+  export PATH=$PATH:/usr/mpi/gcc/openmpi-4.0.2rc3/bin
+  export GDAL_DATA=/usr/share/gdal
+  export AWS_DEFAULT_REGION=''
+
+## MKL paths
+
+  export MKLROOT=/opt/intel/compilers_and_libraries_2020.0.166/linux/mkl
+  export PKG_CONFIG_PATH=/opt/intel/compilers_and_libraries_2020.0.166/linux/mkl/bin/pkgconfig:/opt/intel/compilers_and_libraries_2020.0.166/linux/mkl/bin/pkgconfig
+  export LD_LIBRARY_PATH=/opt/intel/compilers_and_libraries_2020.0.166/linux/tbb/lib/intel64_lin/gcc4.7:/opt/intel/compilers_and_libraries_2020.0.166/linux/compiler/lib/intel64_lin:/opt/intel/compilers_and_libraries_2020.0.166/linux/mkl/lib/intel64_lin:/opt/intel/compilers_and_libraries_2020.0.166/linux/tbb/lib/intel64_lin/gcc4.7:/opt/intel/compilers_and_libraries_2020.0.166/linux/compiler/lib/intel64_lin:/opt/intel/compilers_and_libraries_2020.0.166/linux/mkl/lib/intel64_lin:$LD_LIBRARY_PATH
+  export LIBRARY_PATH=/opt/intel/compilers_and_libraries_2020.0.166/linux/tbb/lib/intel64_lin/gcc4.7:/opt/intel/compilers_and_libraries_2020.0.166/linux/compiler/lib/intel64_lin:/opt/intel/compilers_and_libraries_2020.0.166/linux/mkl/lib/intel64_lin:/opt/intel/compilers_and_libraries_2020.0.166/linux/tbb/lib/intel64_lin/gcc4.7:/opt/intel/compilers_and_libraries_2020.0.166/linux/compiler/lib/intel64_lin:/opt/intel/compilers_and_libraries_2020.0.166/linux/mkl/lib/intel64_lin
+  export NLSPATH=/opt/intel/compilers_and_libraries_2020.0.166/linux/mkl/lib/intel64_lin/locale/%l_%t/%N:/opt/intel/compilers_and_libraries_2020.0.166/linux/mkl/lib/intel64_lin/locale/%l_%t/%N
+  export CPATH=/opt/intel/compilers_and_libraries_2020.0.166/linux/mkl/include:/opt/intel/compilers_and_libraries_2020.0.166/linux/mkl/include
+  export PKG_CONFIG_PATH=/opt/intel/compilers_and_libraries_2020.0.166/linux/mkl/bin/pkgconfig:/opt/intel/compilers_and_libraries_2020.0.166/linux/mkl/bin/pkgconfig:$PKG_CONFIG_PATH
+
+## OpenMP threading variables
+
+  export OMP_NUM_THREADS=1
+  export OMP_AFFINITY_FORMAT="Process %P level %L thread %0.3n affinity %A"
+  export OMP_DISPLAY_AFFINITY=true
+
+%runscript
+
+  exec /bin/bash R "$@"
+  exec /bin/bash /init "$@"
+
+%startscript
+
+  exec /bin/bash R "$@"
+  exec /bin/bash /init "$@"
