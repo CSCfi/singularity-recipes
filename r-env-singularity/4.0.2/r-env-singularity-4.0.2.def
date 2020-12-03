@@ -80,10 +80,11 @@ From: ubuntu:18.04
   apt-get -y install libcurl4-openssl-dev libssl-dev libssh2-1-dev libxml2-dev libgsl-dev libhdf5-dev libpq-dev \
                       xorg libx11-dev libglu1-mesa-dev libfreetype6-dev tk8.6-dev default-jre default-jdk \
                       libudunits2-dev openssh-client openssh-server libssh-dev libgmp-dev libmpfr-dev \
-                      libmagick++-dev libnetcdf-dev libpoppler-cpp-dev jags libproj-dev libwxgtk3.0-dev \
+                      libmagick++-dev libnetcdf-dev libpoppler-cpp-dev jags libwxgtk3.0-dev sqlite3 libsqlite3-dev \
                       libexpat1-dev wx-common libogdi3.2-dev unixodbc-dev git dh-autoreconf libfftw3-3 \
                       libfftw3-dev libgeos-dev libfontconfig1-dev glpk-utils libglpk-dev gawk valgrind \
-		      libreadline-dev gfortran make lsof tmux sudo libpcre2-dev libv8-dev liblwgeom-dev
+		      libreadline-dev gfortran make lsof tmux sudo libpcre2-dev libv8-dev liblwgeom-dev \
+		      libmariadbclient-dev libmariadb-client-lgpl-dev libgfortran5
 
 ## Dist-upgrade (more recent GLIBC)
 
@@ -116,12 +117,47 @@ From: ubuntu:18.04
   R CMD javareconf
   cd
 
-## GDAL + SAGA from ubuntugis 
-## GDAL 2.4.2 (default Ubuntu 18 version is 2.2.3), saga 7.3.0 (22 Apr 2020)
+## PROJ 7.1.1
+## https://proj.org/download.html#current-release
 
-  add-apt-repository -y ppa:ubuntugis/ppa
-  apt-get -y update && apt-get -y upgrade
-  apt-get -y install gdal-bin libgdal-dev saga
+  apt-get -y remove libproj-dev
+  wget https://download.osgeo.org/proj/proj-7.1.1.tar.gz
+  tar -xvzf proj-7.1.1.tar.gz
+  cd proj-7.1.1
+  ./configure
+  make -j4 && make install
+  echo /usr/local/lib | tee -a /etc/ld.so.conf.d/local.conf
+  ldconfig
+  cd
+
+## GDAL 3.2.0
+## http://download.osgeo.org/gdal/
+
+  apt-get -y remove gdal-bin libgdal-dev
+  wget http://download.osgeo.org/gdal/3.2.0/gdal-3.2.0.tar.gz
+  tar -xvzf gdal-3.2.0.tar.gz
+  cd gdal-3.2.0
+  ./configure			\
+	--with-geos=yes		\
+	--with-proj=/usr/local	\
+	--libdir=/usr/lib64		
+  make -j4 && make install
+  ldconfig
+  cd
+
+## SAGA
+## https://sourceforge.net/p/saga-gis/wiki/Compiling%20SAGA%20on%20Linux/
+## Installation is not version-fixed (depends on repository)
+## Currently 7.9.0 (26.11.2020)
+
+  mkdir /sagabuild
+  cd /sagabuild
+  git clone git://git.code.sf.net/p/saga-gis/code saga-gis-code
+  cd /sagabuild/saga-gis-code/saga-gis
+  autoreconf -fi
+  ./configure
+  make -j4 && make install
+  cd
 
 ## Set date-locked MRAN snapshot of CRAN
 
@@ -195,12 +231,18 @@ From: ubuntu:18.04
 					  texlive-fonts-recommended \
 				          lmodern
 
-  R --slave -e 'install.packages("tinytex",repos = "https://cran.rstudio.com/")'
-  R --slave -e 'install.packages("blogdown",repos = "https://cran.rstudio.com/")'
-  R --slave -e 'install.packages("bookdown",repos = "https://cran.rstudio.com/")'
-  R --slave -e 'install.packages("rticles",repos = "https://cran.rstudio.com/")'
-  R --slave -e 'install.packages("rmdshower",repos = "https://cran.rstudio.com/")'
-  R --slave -e 'install.packages("xaringan",repos = "https://cran.rstudio.com/")'
+  R --slave -e 'install.packages("tinytex", repos = "https://cran.rstudio.com/")'
+  R --slave -e 'install.packages("blogdown", repos = "https://cran.rstudio.com/")'
+  R --slave -e 'install.packages("bookdown", repos = "https://cran.rstudio.com/")'
+  R --slave -e 'install.packages("rticles", repos = "https://cran.rstudio.com/")'
+  R --slave -e 'install.packages("rmdshower", repos = "https://cran.rstudio.com/")'
+  R --slave -e 'install.packages("xaringan", repos = "https://cran.rstudio.com/")'
+
+## Further R packages
+## (Some selected packages that ran into errors when installing outside container)
+
+  R --slave -e 'install.packages("vroom", repos = "https://cran.rstudio.com/")'
+  R --slave -e 'install.packages("systemfonts", repos = "https://cran.rstudio.com/")'
 
 ## CGet
 
@@ -264,6 +306,7 @@ From: ubuntu:18.04
   export TZ=Europe/Helsinki
   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/mpi/gcc/openmpi-4.0.2rc3/lib
   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/intel/mkl/lib/intel64
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/lib:/usr/lib:/usr/local/lib:/usr/lib64
   export PATH=$PATH:/usr/mpi/gcc/openmpi-4.0.2rc3/bin
   export GDAL_DATA=/usr/share/gdal
   export AWS_DEFAULT_REGION=''
