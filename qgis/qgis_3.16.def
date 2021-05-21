@@ -1,0 +1,36 @@
+## QGIS 3.16 (Singularity container)
+
+Bootstrap: docker
+From: ubuntu:18.04
+
+%post
+    ## for apt to be noninteractive
+    export DEBIAN_FRONTEND=noninteractive
+    export DEBCONF_NONINTERACTIVE_SEEN=true
+    export TZ=Europe/Helsinki
+                                         
+    apt-get -y update
+    apt-get -y upgrade
+    apt-get -y install --no-install-recommends gnupg software-properties-common wget
+
+    wget -qO - https://qgis.org/downloads/qgis-2020.gpg.key | gpg --no-default-keyring --keyring gnupg-ring:/etc/apt/trusted.gpg.d/qgis-archive.gpg --import
+    chmod a+r /etc/apt/trusted.gpg.d/qgis-archive.gpg
+    add-apt-repository "deb https://qgis.org/debian `lsb_release -c -s` main"
+
+    apt -y update                                              
+    apt-get -y install --no-install-recommends python-requests python-numpy \
+                        python-pandas python-scipy python-matplotlib \
+                        python-pyside.qtwebkit gdal-bin qgis python-qgis \
+                        qgis-plugin-grass grass saga
+
+    apt-get clean
+
+%environment
+
+## General environment variables
+
+  export LC_ALL=C.UTF-8
+  export LANG=C.UTF-8
+  export BUILD_DATE=2020-12-09
+  export CC=gcc
+  unset MANPATH
