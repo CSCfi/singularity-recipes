@@ -1,0 +1,84 @@
+Bootstrap: library
+From: centos:7.7
+
+%labels
+  Author Mats Sjöberg <mats.sjoberg@csc.fi>
+
+%files
+  requirements_tensorflow_2.4.txt /opt/requirements.txt
+  libcudnn8*.x86_64.rpm /opt/rpms/
+
+%post
+  # Upgrade packages to most recent versions
+  yum -y upgrade
+
+  # Enable EPEL (required by NVIDIA packages)
+  yum -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+
+  # Install newer gcc and Python 3.8
+  yum -y install centos-release-scl
+  yum -y install devtoolset-7
+  yum -y install rh-python38
+  yum -y install rh-python38-python-devel
+  yum -y install rh-git218
+  source /opt/rh/devtoolset-7/enable
+  source /opt/rh/rh-python38/enable
+  source /opt/rh/rh-git218/enable
+
+  # Install additional stuff
+  yum -y install wget cmake lbzip2
+
+  # Install Mellanox stuff and OpenMPI
+  wget https://www.mellanox.com/downloads/ofed/RPM-GPG-KEY-Mellanox
+  rpm --import RPM-GPG-KEY-Mellanox
+  rm RPM-GPG-KEY-Mellanox
+
+  cd /etc/yum.repos.d/
+  # MOFED 4.7
+  # wget https://linux.mellanox.com/public/repo/mlnx_ofed/4.7-1.0.0.1/rhel7.7/mellanox_mlnx_ofed.repo
+  # MOFED 5.0
+  wget https://linux.mellanox.com/public/repo/mlnx_ofed/5.0-1.0.0.0/rhel7.8/mellanox_mlnx_ofed.repo
+  yum -y install mlnx-ofed-all
+
+  # Install CUDA
+  cd /etc/yum.repos.d/
+  wget https://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64/cuda-rhel7.repo
+  yum -y install nvidia-driver-latest-dkms cuda-11-1
+  yum -y install cuda-drivers
+
+  # Install CUDNN
+  # Has to be manually downloaded from here: https://developer.nvidia.com/cudnn
+  rpm -i /opt/rpms/libcudnn8*.rpm
+  rm /opt/rpms/libcudnn8*.rpm
+
+  # Install NCCL
+  yum -y install libnccl-2.8.4-1+cuda11.1 libnccl-devel-2.8.4-1+cuda11.1 libnccl-static-2.8.4-1+cuda11.1
+
+  # Install TensorFlow
+  pip install -r /opt/requirements.txt
+  
+  export OMPI_DIR=$(ls -1d /usr/mpi/gcc/openmpi-4.0.* | head -n1)
+  export PATH=$OMPI_DIR/bin:$PATH
+  export LD_LIBRARY_PATH=$OMPI_DIR/lib64:$LD_LIBRARY_PATH
+
+  export PATH=/usr/local/cuda/bin:$PATH
+  HOROVOD_WITHOUT_PYTORCH=1 HOROVOD_WITH_TENSORFLOW=1 HOROVOD_WITHOUT_MXNET=1 \
+                      HOROVOD_WITH_MPI=1 HOROVOD_WITHOUT_GLOO=1 HOROVOD_GPU_OPERATIONS=NCCL \
+                      pip install horovod
+  yum clean all
+
+  # https://github.com/tensorflow/tensorflow/issues/44777
+  cd /usr/local/cuda/lib64/
+  ln libcusolver.so.11 libcusolver.so.10
+
+%environment
+  export SLURM_MPI_TYPE=pmix_v3
+  export PMIX_MCA_gds=hash
+
+  export OMPI_DIR=$(ls -1d /usr/mpi/gcc/openmpi-4.0.* | head -n1)
+  export PATH=/usr/local/cuda/bin:$OMPI_DIR/bin:$PATH
+  export LD_LIBRARY_PATH=/usr/local/cuda/lib64/:$OMPI_DIR/lib64:$LD_LIBRARY_PATH
+
+  source /opt/rh/devtoolset-7/enable
+  source /opt/rh/rh-python38/enable
+  source /opt/rh/rh-git218/enable
