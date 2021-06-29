@@ -1146,6 +1146,7 @@ install_version("conStruct", dependencies = FALSE, lib = libpath)
 # D
 
 install_version("densityClust", dependencies = FALSE, lib = libpath)
+BiocManager::install("DiffBind", lib = libpath, update = FALSE)
 BiocManager::install("DMRcate", lib = libpath, update = FALSE)
 
 # distrom + dependencies

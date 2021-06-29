@@ -39,7 +39,8 @@ libiodbc
 libiodbc-devel
 libjpeg-turbo-devel
 libpng
-libpqxx-devel	
+libpqxx-devel
+librsvg2-devel
 libssh2-devel
 libssh-devel
 libtiff
