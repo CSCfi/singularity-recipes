@@ -1059,6 +1059,20 @@ install_version("aws.s3", dependencies = FALSE, lib = libpath)
 
 # B
 
+# BAT + dependencies
+# Installing BAT 2.6.0 from source
+# Newer modules could install it directly from MRAN
+
+install_version("rcdd", dependencies = FALSE, lib = libpath)
+install_version("hitandrun", dependencies = FALSE, lib = libpath)
+install_version("hypervolume", dependencies = FALSE, lib = libpath)
+install_version("nls2", dependencies = FALSE, lib = libpath)
+
+defaultwd <- getwd()
+setwd("/appl/soft/math/r-env-singularity/4.0.5/4.0.5-source")
+install.packages("BAT_2.6.0.tar.gz", repos = NULL, type = "source", lib = libpath)
+setwd(defaultwd)
+
 # BayesianTools + dependencies
 install_version("IDPmisc", dependencies = FALSE, lib = libpath)
 install_version("gmm", dependencies = FALSE, lib = libpath)
