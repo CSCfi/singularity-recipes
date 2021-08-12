@@ -5,7 +5,7 @@
 # The script is divided into seven sections.
 # Set 7 was introduced after Puhti GA and is WIP.
 
-# R 4.0.5 DEVTOOLS AND BIOCONDUCTOR
+# DEVTOOLS AND BIOCONDUCTOR
 # Install these before going through package sets!
 
 libpath <- .libPaths()[2]
@@ -18,7 +18,7 @@ BiocManager::install(version = "3.12", lib = libpath, ask = FALSE)
 # Load devtools
 library(devtools)
 
-# R 4.0.5 PACKAGE SET 1 
+# PACKAGE SET 1 
 # CRAN packages, lower-level
 
 install_version("abind", dependencies = FALSE, lib = libpath)
@@ -229,7 +229,7 @@ install_version("viridisLite", dependencies = FALSE, lib = libpath)
 install_version("withr", dependencies = FALSE, lib = libpath)
 install_version("zip", dependencies = FALSE, lib = libpath)
 
-# R 4.0.5 PACKAGE SET 2 
+# PACKAGE SET 2 
 # CRAN packages w/ up + downstream dependencies
 
 # pkgmaker
@@ -247,7 +247,16 @@ install_version("dplyr", dependencies = FALSE, lib = libpath)
 install_version("tidyr", dependencies = FALSE, lib = libpath) 
 install_version("dbplyr", dependencies = FALSE, lib = libpath)
 install_version("cellranger", dependencies = FALSE, lib = libpath)
-install_version("ellipsis", dependencies = FALSE, lib = libpath)
+
+# ellipsis (need newer)
+defaultwd <- getwd() # get default wd
+setwd("/appl/soft/math/r-env-singularity/4.0.5/4.0.5-source")
+download.file(url = 'https://cran.r-project.org/src/contrib/ellipsis_0.3.2.tar.gz',
+              destfile = 'ellipsis.tar.gz')
+gzname <- list.files(pattern = "ellipsis")
+install.packages(gzname, repos = NULL, lib = libpath)
+setwd(defaultwd)
+
 install_version("forcats", dependencies = FALSE, lib = libpath)
 install_version("plyr", dependencies = FALSE, lib = libpath)
 install_version("reshape2", dependencies = FALSE, lib = libpath)
@@ -271,9 +280,12 @@ install_version("modelr", dependencies = FALSE, lib = libpath)
 install_version("processx", dependencies = FALSE, lib = libpath)
 install_version("callr", dependencies = FALSE, lib = libpath)
 install_version("reprex", dependencies = FALSE, lib = libpath)
-install_version("googledrive", dependencies = FALSE, lib = libpath) 
+
+# tidyverse wants some new things
+install_version("dtplyr", dependencies = FALSE, lib = libpath)
+install_version("googledrive", dependencies = FALSE, lib = libpath)
 install_version("ids", dependencies = FALSE, lib = libpath)
-install_version("googlesheets4", dependencies = FALSE, lib = libpath)
+install_version("googlesheets4", dependencies = FALSE, lib = libpath) 
 install_version("tidyverse", dependencies = FALSE, lib = libpath) 
 
 # lme4
@@ -344,7 +356,15 @@ install_version("timeSeries", dependencies = FALSE, lib = libpath)
 install_version("TMB", dependencies = FALSE, lib = libpath)
 install_version("glmmTMB", dependencies = FALSE, lib = libpath)
 
-install_version("vctrs", dependencies = FALSE, lib = libpath)
+# need newer vctrs
+defaultwd <- getwd() # get default wd
+setwd("/appl/soft/math/r-env-singularity/4.0.5/4.0.5-source")
+download.file(url = 'https://cran.r-project.org/src/contrib/vctrs_0.3.8.tar.gz',
+              destfile = 'vctrs.tar.gz')
+gzname <- list.files(pattern = "vctrs")
+install.packages(gzname, repos = NULL, lib = libpath)
+setwd(defaultwd)
+
 install_version("vegan", dependencies = FALSE, lib = libpath)
 
 # quantreg
@@ -571,7 +591,8 @@ install_version("insight", dependencies = FALSE, lib = libpath)
 install_version("effects", dependencies = FALSE, lib = libpath)
 
 install_version("expm", dependencies = FALSE, lib = libpath)
-install_version("extrafont", dependencies = FALSE, lib = libpath)
+# leaving out extrafonts (attempts to compile in /appl)
+# install_version("extrafont", dependencies = FALSE, lib = libpath)
 
 # F
 
@@ -1189,6 +1210,7 @@ BiocManager::install("FlowSorted.CordBloodCombined.450k", lib = libpath, update 
 BiocManager::install("FlowSorted.DLPFC.450k", lib = libpath, update = FALSE)
 install_version("future.batchtools", dependencies = FALSE, lib = libpath)
 install_version("FWDselect", dependencies = FALSE, lib = libpath)
+install_version("fst", dependencies = FALSE, lib = libpath)
 
 # G
 
@@ -1269,6 +1291,8 @@ install_version("lhs", dependencies = FALSE, lib = libpath)
 install_github("variani/lme4qtl", dependencies = FALSE, lib = libpath) 
 
 # M
+
+# mare + dependencies
 
 install_version("fgui", dependencies = FALSE, lib = libpath)
 
@@ -1355,6 +1379,10 @@ install_version("ncf", dependencies = FALSE, lib = libpath)
 BiocManager::install("PharmacoGx", lib = libpath, update = FALSE)
 install_version("profvis", lib = libpath)
 
+# pacman + dependencies
+install_version("remotes", dependencies = FALSE, lib = libpath)
+install_version("pacman", dependencies = FALSE, lib = libpath)
+
 # Q
 
 # qdapRegex + dependencies
@@ -1438,6 +1466,9 @@ install_version("GPfit", dependencies = FALSE, lib = libpath)
 install_version("hardhat", dependencies = FALSE, lib = libpath)
 install_version("workflows", dependencies = FALSE, lib = libpath)
 install_version("tune", dependencies = FALSE, lib = libpath)
+install_version("conflicted", dependencies = FALSE, lib = libpath)
+install_version("cli", dependencies = FALSE, lib = libpath)
+install_version("workflowsets", dependencies = FALSE, lib = libpath)
 install_version("tidymodels", dependencies = FALSE, lib = libpath)
 
 install_version("topicmodels", dependencies = FALSE, lib = libpath)
@@ -1466,6 +1497,9 @@ install_version("WeightedCluster", dependencies = FALSE, lib = libpath)
 BiocManager::install("WGCNA", lib = libpath, update = FALSE)
 
 # X
+
+install_version("xgboost", dependencies = FALSE, lib = libpath)
+
 # Y
 # Z
 
@@ -1474,5 +1508,23 @@ BiocManager::install("WGCNA", lib = libpath, update = FALSE)
 
 install_version("keras", lib = libpath)
 install_version("tensorflow", lib = libpath)
+
+# PACKAGE SET 9
+
+# Additional packages (Fiona)
+install_version("lfe", dependencies = FALSE, lib = libpath)
+install_version("estimatr", dependencies = FALSE, lib = libpath)
+install_version("texreg", dependencies = FALSE, lib = libpath)
+install_version("binsreg", dependencies = FALSE, lib = libpath)
+install_version("stargazer", dependencies = FALSE, lib = libpath)
+install_version("dreamerr", dependencies = FALSE, lib = libpath)
+install_version("fixest", dependencies = FALSE, lib = libpath)
+install_version("tidylog", dependencies = FALSE, lib = libpath)
+install_version("stringdist", dependencies = FALSE, lib = libpath)
+install_version("fuzzyjoin", dependencies = FALSE, lib = libpath)
+install_version("sjlabelled", dependencies = FALSE, lib = libpath)
+install_version("sjmisc", dependencies = FALSE, lib = libpath)
+install_version("psychTools", dependencies = FALSE, lib = libpath)
+install_version("GPArotation", dependencies = FALSE, lib = libpath)
 
 ### END ###
