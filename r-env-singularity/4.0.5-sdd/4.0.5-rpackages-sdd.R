@@ -5,7 +5,7 @@
 # The script is divided into seven sections.
 # Set 7 was introduced after Puhti GA and is WIP.
 
-# R 4.0.5 DEVTOOLS AND BIOCONDUCTOR
+# DEVTOOLS AND BIOCONDUCTOR
 # Install these before going through package sets!
 
 install.packages("devtools", dependencies = TRUE)
@@ -17,7 +17,7 @@ BiocManager::install(version = "3.12", ask = FALSE)
 # Load devtools
 library(devtools)
 
-# R 4.0.5 PACKAGE SET 1 
+# PACKAGE SET 1 
 # CRAN packages, lower-level
 
 install_version("abind", dependencies = FALSE)
@@ -221,7 +221,7 @@ install_version("viridisLite", dependencies = FALSE)
 install_version("withr", dependencies = FALSE)
 install_version("zip", dependencies = FALSE)
 
-# R 4.0.5 PACKAGE SET 2 
+# PACKAGE SET 2 
 # CRAN packages w/ up + downstream dependencies
 
 # pkgmaker
@@ -517,7 +517,7 @@ install_version("doRNG", dependencies = FALSE)
 # https://biodiversityinformatics.amnh.org/open_source/maxent/
 # maxent.jar needs to be copied to: .../dismo/java
 
-# R 4.0.5 PACKAGE SET 3 
+# PACKAGE SET 3 
 # CRAN packages, top of the food chain
 
 # A
@@ -801,7 +801,7 @@ install_version("umap", dependencies = FALSE)
 install_version("vcfR", dependencies = FALSE)
 install_version("VineCopula", dependencies = FALSE)
 
-# R 4.0.5 PACKAGE SET 4 
+# PACKAGE SET 4 
 # CRAN packages, other packages with wider dependencies
 
 # packages that need X11
@@ -888,7 +888,7 @@ install_version("RMariaDB", dependencies = FALSE)
 install_version("rtiff", dependencies = FALSE)
 install_version("sendplot", dependencies = FALSE)
 
-# R 4.0.5 PACKAGE SET 5
+# PACKAGE SET 5
 # CRAN packages (spatial packages) + others that need rgdal
 
 # Packages that need GDAL and PROJ4
@@ -956,7 +956,7 @@ install_version("dartR", dependencies = FALSE)
 
 # Note: rgrass7 removed from list 29.11.2019 (grass is being phased out)
 
-# R 4.0.5 PACKAGE SET 6
+# PACKAGE SET 6
 # Bioconductor packages (Bioconductor version 3.11)
 
 # excludes a small number of Bioconductor packages required as 
@@ -1048,7 +1048,7 @@ BiocManager::install("chipseq", update = FALSE)
 
 BiocManager::install("scde", update = FALSE)
 
-# R 4.0.5 PACKAGE SET 7
+# PACKAGE SET 7
 # Later additions
 # Extras, GitHub installations, user requests etc
 
@@ -1459,18 +1459,32 @@ install_version("xgboost", dependencies = FALSE)
 # Y
 # Z
 
-# R 4.0.5 PACKAGE SET 8
+# PACKAGE SET 8
 # GPU packages
 
 install_version("keras")
 install_version("tensorflow")
 
-# R 4.0.5 PACKAGE SET 9
-# SDD 
+# PACKAGE SET 9 
 
 install_version("fst")
 install_version("xgboost")
 install_version("pacman")
 
-### END ###
+# Fiona
+install_version("lfe", dependencies = FALSE)
+install_version("estimatr", dependencies = FALSE)
+install_version("texreg", dependencies = FALSE)
+install_version("binsreg", dependencies = FALSE)
+install_version("stargazer", dependencies = FALSE)
+install_version("dreamerr", dependencies = FALSE)
+install_version("fixest", dependencies = FALSE)
+install_version("tidylog", dependencies = FALSE)
+install_version("stringdist", dependencies = FALSE)
+install_version("fuzzyjoin", dependencies = FALSE)
+install_version("sjlabelled", dependencies = FALSE)
+install_version("sjmisc", dependencies = FALSE)
+install_version("psychTools", dependencies = FALSE)
+install_version("GPArotation", dependencies = FALSE)
 
+### END ###

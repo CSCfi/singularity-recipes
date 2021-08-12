@@ -12,6 +12,7 @@ From: centos:7.7
 
 ## License files
 
+  intel-simplified-software-license.txt /usr/intel-simplified-software-license.txt
   licensing.txt /usr/licensing.txt
   nvidia-nccl-license.txt /usr/nvidia-nccl-license.txt
 
@@ -47,6 +48,13 @@ From: centos:7.7
 ## Set HDF5 version under %post to match this file
 
   hdf5-*.tar.gz /opt/tar
+
+## SAGA tar file
+## (Earlier def files employ git clone)
+## Get the tarball from:
+## https://sourceforge.net/projects/saga-gis/files/SAGA%20-%207/
+
+  saga-*.tar.gz /opt/tar
 
 ## Installation lists
 
@@ -100,11 +108,13 @@ From: centos:7.7
   # HDF5
   export HDF5_VERSION=1.12.0
 
-  # GDAL + PROJ
+  # GIS software versions (GDAL, GEOS, PROJ, SAGA)
   export GDAL_DATA=/usr/share/gdal
   export GDAL_VERSION=3.2.0
+  export GEOS_VERSION=3.9.1
   export PROJ_VERSION=8.0.0
   export PROJDATA_VERSION=1.5
+  export SAGA_VERSION=7.9.0
 
   # GraphViz
   # https://gitlab.com/graphviz/graphviz/-/releases
@@ -259,7 +269,7 @@ From: centos:7.7
   cd
   rm graphviz-${GRAPHVIZ_VERSION}.tar.gz
 
-# R + RStudio Desktop
+# R + RStudio Server
 
   # R
   wget https://cran.rstudio.com/src/base/R-${R_BASEVER}/R-${R_VERSION}.tar.gz
@@ -334,15 +344,26 @@ From: centos:7.7
   R --slave -e 'install.packages("rmdshower", repos = "https://cran.rstudio.com/")'
   R --slave -e 'install.packages("xaringan", repos = "https://cran.rstudio.com/")'
 
-  # R packages that ran into errors when installing outside container
+## Further R packages
+## (Selected packages that ran into errors when installing outside container)
+
   R --slave -e 'install.packages("vroom", repos = "https://cran.rstudio.com/")'
   R --slave -e 'install.packages("systemfonts", repos = "https://cran.rstudio.com/")'
 
-# GIS installations (PROJ, GDAL, SAGA)
+# GIS installations (GEOS, PROJ, GDAL, SAGA)
+
+  # GEOS
+  # http://download.osgeo.org/geos/
+  wget http://download.osgeo.org/geos/geos-${GEOS_VERSION}.tar.bz2
+  tar -xvjf geos-${GEOS_VERSION}.tar.bz2
+  cd geos-${GEOS_VERSION}
+  ./configure
+  make -j5 && make install
+  ldconfig
+  cd
 
   # PROJ
   # https://proj.org/download.html#current-release
-  cd
   wget https://download.osgeo.org/proj/proj-${PROJ_VERSION}.tar.gz
   tar -xvzf proj-${PROJ_VERSION}.tar.gz
   cd proj-${PROJ_VERSION}
@@ -382,19 +403,14 @@ From: centos:7.7
   cd
   rm gdal-${GDAL_VERSION}.tar.gz
 
-  # SAGA
-  # https://sourceforge.net/p/saga-gis/wiki/Compiling%20SAGA%20on%20Linux/
-  # Installation is not version-fixed (depends on repository)
-  # Currently 7.9.0 (26.11.2020)
-
-  mkdir /sagabuild
-  cd /sagabuild
-  git clone git://git.code.sf.net/p/saga-gis/code saga-gis-code
-  cd /sagabuild/saga-gis-code/saga-gis
-  autoreconf -fi
-  ./configure
+  # SAGA 7.9.0
+  cd /opt/tar && tar -xvzf saga-${SAGA_VERSION}.tar.gz
+  cd saga-${SAGA_VERSION}
+  ./configure				\
+	--libdir=/usr/local/lib64
   make -j5 && make install
-  cd
+  ldconfig
+  cd  
 
 # NVIDIA + Python installations
 
@@ -502,4 +518,3 @@ From: centos:7.7
 
   exec /bin/bash R "$@"
   exec /bin/bash /init "$@"
-

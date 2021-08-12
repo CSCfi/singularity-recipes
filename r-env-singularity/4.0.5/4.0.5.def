@@ -45,6 +45,13 @@ From: centos:7.7
 
   hdf5-*.tar.gz /opt/tar
 
+## SAGA tar file
+## (Earlier def files employ git clone)
+## Get the tarball from:
+## https://sourceforge.net/projects/saga-gis/files/SAGA%20-%207/
+
+  saga-*.tar.gz /opt/tar
+
 ## Installation lists
 
   # Library installation list
@@ -97,11 +104,13 @@ From: centos:7.7
   # HDF5
   export HDF5_VERSION=1.12.0
 
-  # GDAL + PROJ
+  # GIS software versions (GDAL, GEOS, PROJ, SAGA)
   export GDAL_DATA=/usr/share/gdal
   export GDAL_VERSION=3.2.0
+  export GEOS_VERSION=3.9.1
   export PROJ_VERSION=8.0.0
   export PROJDATA_VERSION=1.5
+  export SAGA_VERSION=7.9.0
 
   # GraphViz
   # https://gitlab.com/graphviz/graphviz/-/releases
@@ -197,6 +206,7 @@ From: centos:7.7
   rm -f /lib64/libz.so.1.2.7
   ldconfig
   cd
+  rm zlib-${ZLIB_VERSION}.tar.gz
 
   # JDK 15
   # https://jdk.java.net/archive/
@@ -206,6 +216,7 @@ From: centos:7.7
   export JAVA_HOME=/usr/local/jdk-15.0.1
   export PATH=$PATH:$JAVA_HOME/bin
   ldconfig
+  rm openjdk-15.0.1_linux-x64_bin.tar.gz
 
   # GSL (GNU Scientific Library)
   wget https://mirrors.syringanetworks.net/gnu/gsl/gsl-${GSL_VERSION}.tar.gz
@@ -215,6 +226,7 @@ From: centos:7.7
   make -j5 && make install
   ldconfig
   cd
+  rm gsl-${GSL_VERSION}.tar.gz
 
   # HDF5
   cd /opt/tar && tar -xvzf hdf5-${HDF5_VERSION}.tar.gz
@@ -222,6 +234,7 @@ From: centos:7.7
   ./configure --prefix=/usr/local
   make -j5 && make install
   cd
+  rm /opt/tar/hdf5-${HDF5_VERSION}.tar.gz
 
   # SQLite
   # https://www.sqlite.org/download.html
@@ -232,6 +245,7 @@ From: centos:7.7
   make -j5 && make install
   ldconfig
   cd
+  rm sqlite-autoconf-${SQLITE_VERSION}.tar.gz
 
   # JAGS
   cd /opt/tar && tar -xvzf JAGS-${JAGS_VERSION}.tar.gz
@@ -242,6 +256,7 @@ From: centos:7.7
   make -j5 && make install
   ldconfig
   cd
+  rm /opt/tar/JAGS-${JAGS_VERSION}.tar.gz
   
   # CLang
   yum-config-manager --enable extras && yum makecache
@@ -256,6 +271,7 @@ From: centos:7.7
   ./configure
   make -j5 && make install
   cd
+  rm graphviz-${GRAPHVIZ_VERSION}.tar.gz
 
 # R + RStudio Server
 
@@ -272,6 +288,7 @@ From: centos:7.7
   make -j5 && make install
   R CMD javareconf
   cd
+  rm R-${R_VERSION}.tar.gz
 
   # RStudio Server
 
@@ -292,6 +309,7 @@ From: centos:7.7
   wget -P /tmp/ https://github.com/just-containers/s6-overlay/releases/download/${S6_VERSION}/s6-overlay-x86.tar.gz
   tar hzxf /tmp/s6-overlay-x86.tar.gz -C / --exclude=usr/bin/execlineb
   tar hzxf /tmp/s6-overlay-x86.tar.gz -C /usr ./bin/execlineb && $_clean
+  rm /tmp/s6-overlay-x86.tar.gz
 
   # RStudio Server installation
   RSTUDIO_URL="https://download2.rstudio.org/server/centos7/x86_64/rstudio-server-rhel-${RSTUDIO_VERSION}-x86_64.rpm"
@@ -338,7 +356,17 @@ From: centos:7.7
   R --slave -e 'install.packages("vroom", repos = "https://cran.rstudio.com/")'
   R --slave -e 'install.packages("systemfonts", repos = "https://cran.rstudio.com/")'
 
-# GIS installations (PROJ, GDAL, SAGA)
+# GIS installations (GEOS, PROJ, GDAL, SAGA)
+
+  # GEOS
+  # http://download.osgeo.org/geos/
+  wget http://download.osgeo.org/geos/geos-${GEOS_VERSION}.tar.bz2
+  tar -xvjf geos-${GEOS_VERSION}.tar.bz2
+  cd geos-${GEOS_VERSION}
+  ./configure
+  make -j5 && make install
+  ldconfig
+  cd
 
   # PROJ
   # https://proj.org/download.html#current-release
@@ -350,6 +378,7 @@ From: centos:7.7
   echo /usr/local/lib | tee -a /etc/ld.so.conf.d/local.conf
   ldconfig
   cd
+  rm proj-${PROJ_VERSION}.tar.gz
 
   # projdata
   # https://proj.org/download.html#download
@@ -377,20 +406,17 @@ From: centos:7.7
   --with-libz=internal
   make -j5 && make install
   ldconfig
-
-  # SAGA
-  # https://sourceforge.net/p/saga-gis/wiki/Compiling%20SAGA%20on%20Linux/
-  # Installation is not version-fixed (depends on repository)
-  # Currently 7.9.0 (26.11.2020)
-
-  mkdir /sagabuild
-  cd /sagabuild
-  git clone git://git.code.sf.net/p/saga-gis/code saga-gis-code
-  cd /sagabuild/saga-gis-code/saga-gis
-  autoreconf -fi
-  ./configure
-  make -j5 && make install
   cd
+  rm gdal-${GDAL_VERSION}.tar.gz
+
+  # SAGA 7.9.0
+  cd /opt/tar && tar -xvzf saga-${SAGA_VERSION}.tar.gz
+  cd saga-${SAGA_VERSION}
+  ./configure				\
+	--libdir=/usr/local/lib64
+  make -j5 && make install
+  ldconfig
+  cd  
 
 # Mellanox OFED + OpenMPI installations
 
@@ -517,4 +543,3 @@ From: centos:7.7
 
   exec /bin/bash R "$@"
   exec /bin/bash /init "$@"
-

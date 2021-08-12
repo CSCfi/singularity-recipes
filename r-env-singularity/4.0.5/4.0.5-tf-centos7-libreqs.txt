@@ -16,7 +16,6 @@ freetype-devel
 gcc
 gcc-c++
 gcc-gfortran
-geos-devel
 git
 glib
 glibc-devel 
