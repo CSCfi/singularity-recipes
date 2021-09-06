@@ -1204,6 +1204,11 @@ install_version("FactoMineR", dependencies = FALSE, lib = libpath)
 install_version("factoextra", dependencies = FALSE, lib = libpath)
 
 install_version("fasterize", dependencies = FALSE, lib = libpath)
+
+# fdasrvf + dependencies
+install_version("tolerance", dependencies = FALSE, lib = libpath)
+install_version("fdasrvf", dependencies = FALSE, lib = libpath)
+
 BiocManager::install("FlowSorted.Blood.EPIC", lib = libpath, update = FALSE)
 BiocManager::install("FlowSorted.CordBlood.450k", lib = libpath, update = FALSE)
 BiocManager::install("FlowSorted.CordBloodCombined.450k", lib = libpath, update = FALSE)
