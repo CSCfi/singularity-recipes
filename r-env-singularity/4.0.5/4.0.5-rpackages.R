@@ -1381,6 +1381,11 @@ install_version("ncf", dependencies = FALSE, lib = libpath)
 # O
 # P
 
+# ParBayesianOptimization + dependencies
+install_version("DiceKriging", dependencies = FALSE, lib = libpath)
+install_version("dbscan", dependencies = FALSE, lib = libpath)
+install_version("ParBayesianOptimization", dependencies = FALSE, lib = libpath)
+
 BiocManager::install("PharmacoGx", lib = libpath, update = FALSE)
 install_version("profvis", lib = libpath)
 
