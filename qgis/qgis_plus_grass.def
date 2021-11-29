@@ -1,0 +1,34 @@
+Bootstrap: docker
+From: ubuntu:21.04
+
+%post
+    ## for apt to be noninteractive
+    export DEBIAN_FRONTEND=noninteractive
+    export DEBCONF_NONINTERACTIVE_SEEN=true
+    export TZ=Europe/Helsinki
+                                         
+    apt-get -y update
+    apt-get -y upgrade
+    apt-get -y install --no-install-recommends gnupg software-properties-common wget
+
+    wget -qO - https://qgis.org/downloads/qgis-2021.gpg.key | gpg --no-default-keyring --keyring gnupg-ring:/etc/apt/trusted.gpg.d/qgis-archive.gpg --import
+    chmod a+r /etc/apt/trusted.gpg.d/qgis-archive.gpg
+    add-apt-repository "deb https://qgis.org/ubuntu `lsb_release -c -s` main"
+
+    apt -y update                                              
+    apt-get -y install libqt5core5a binutils strace
+    strip --remove-section=.note.ABI-tag /usr/lib/x86_64-linux-gnu/libQt5Core.so.5
+    apt-get -y install --no-install-recommends \
+        qgis python3-qgis \
+        grass qgis-plugin-grass 
+    apt-get clean
+
+%environment
+
+## General environment variables
+
+  export LC_ALL=C.UTF-8
+  export LANG=C.UTF-8
+  export BUILD_DATE=2021-09-16
+  export CC=gcc
+  unset MANPATH
