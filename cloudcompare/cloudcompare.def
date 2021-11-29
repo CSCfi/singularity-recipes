@@ -1,0 +1,10 @@
+Bootstrap: docker
+From: tswetnam/xpra-cc:cudagl-18.04
+
+# above docker container includes cloudcompare, but did have qt issues, therefore Henrik found below to add:
+
+%post
+    apt-get remove -y libqt5core5a 
+    strip --remove-section=.note.ABI-tag /opt/qt511/lib/libQt5Core.so
+%environment
+    export LD_LIBRARY_PATH=/opt/qt511/lib/
