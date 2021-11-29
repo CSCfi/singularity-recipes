@@ -1,3 +1,5 @@
+# def file used to install QGIS 3.22 to Puhti in Nov '21
+
 Bootstrap: docker
 From: ubuntu:21.04
 
