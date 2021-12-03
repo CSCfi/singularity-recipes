@@ -1,0 +1,120 @@
+#!/bin/bash
+
+# Start RStudio Server
+
+# R version
+RVER=4.1.1
+
+echo 'Launching RStudio Server...'
+
+# Make sure script is run within a slurm job
+if [ -z "$SLURM_JOB_ID" ]
+then
+    echo "start-rstudio-server can only be launched on compute nodes"
+    echo "See the r-env-singularity documentation on using R interactively:"
+    echo "https://docs.csc.fi/apps/r-env-singularity/"
+    exit 1
+fi
+
+# Set an env variable, find hostname of compute node
+XDG_RUNTIME_DIR=""
+NODENAME=$(hostname)
+
+# Get unused socket
+PORT=$(python -c 'import socket; s=socket.socket(); \
+s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
+
+# Get RSTUDIO_PASSWORD
+export RSTUDIO_PASSWORD=$(openssl rand -base64 15)
+
+# Get RSTUDIO_UUID
+export RSTUDIO_UUID=$(uuidgen)
+echo $RSTUDIO_UUID > $TMPDIR/${USER}_secure-cookie-key
+
+# If existing Renviron, clear TMPDIR and OMP / PKG / SLURM variables
+if test -f ~/.Renviron; then
+    sed -i '/TMPDIR/d' ~/.Renviron
+    sed -i '/OMP/d' ~/.Renviron
+    sed -i '/PKG/d' ~/.Renviron
+    sed -i '/SLURM/d' ~/.Renviron
+fi
+
+# Clear out active RStudio sessions
+rm -rf ~/.rstudio/sessions/active/*
+
+# Add environment variables to Renviron
+echo "TMPDIR=$TMPDIR" >> ~/.Renviron
+singularity exec /appl/soft/math/r-env-singularity/${RVER}/${RVER}.sif \
+	printenv | grep -E 'OMP|PKG|SLURM' >> ~/.Renviron
+
+
+# Start RStudio Server
+
+mkdir -p "$TMPDIR/var/lib"
+mkdir -p "$TMPDIR/var/run"
+
+PASSWORD=$RSTUDIO_PASSWORD \
+RSTUDIO_SESSION_TIMEOUT='0' \
+singularity exec \
+-B $TMPDIR:$TMPDIR \
+-B $TMPDIR/var/lib:/var/lib/rstudio-server \
+-B $TMPDIR/var/run:/var/run/rstudio-server \
+-B /users:/users \
+-B /projappl:/projappl \
+-B /appl/data:/appl/data \
+-B /appl/opt:/appl/opt \
+-B /scratch:/scratch \
+-B /fmi:/fmi \
+-B /appl/soft/math/r-env-singularity/${RVER}/${RVER}-rpackages:/appl/soft/math/r-env-singularity/${RVER}/${RVER}-rpackages \
+-B /appl/opt/cluster_studio_xe2019/:/appl/opt/cluster_studio_xe2019 \
+/appl/soft/math/r-env-singularity/${RVER}/${RVER}.sif rserver \
+--www-port ${PORT} \
+--auth-none=0 \
+--server-data-dir "${TMPDIR}" \
+--secure-cookie-key-file $TMPDIR/${USER}_secure-cookie-key \
+--auth-pam-helper-path=pam-helper & pid=$!
+
+# write out tunneling instructions
+echo -e "
+    RStudio Server SSH tunneling instructions
+    -------------------------------------------------------------------------
+    RStudio Server requires SSH keys, for details see:
+    https://docs.csc.fi/apps/r-env-singularity
+   
+    Copy/Paste this in your local terminal to SSH tunnel with remote
+    --------------------------------------------------------------------------
+    Linux / macOS / MobaXterm:
+    ssh -N -L 8787:localhost:$PORT -J $USER@puhti.csc.fi $USER@$NODENAME
+
+    PuTTy:
+    ssh -N -L $PORT:localhost:$PORT $USER@$NODENAME
+    Set Source (8787) and Destination (localhost:$PORT) in: 
+    PuTTy -> Connection -> SSH -> Tunnels 
+    --------------------------------------------------------------------------
+
+    Copy/Paste this URL into your browser
+    --------------------------------------------------------------------------
+    http://localhost:8787/
+    --------------------------------------------------------------------------
+
+    Enter these at the sign-in screen
+    --------------------------------------------------------------------------
+    Username: $USER Password: $RSTUDIO_PASSWORD
+    --------------------------------------------------------------------------
+    To stop RStudio Server: Ctrl + C
+    "
+
+# Trap CTRL-C and wait for the server
+trap "kill -1 $pid" SIGINT
+wait $pid
+
+function cleanup()
+{
+    sed -i '/TMPDIR/d' ~/.Renviron
+    sed -i '/OMP/d' ~/.Renviron
+    sed -i '/PKG/d' ~/.Renviron
+    sed -i '/SLURM/d' ~/.Renviron
+}
+
+trap cleanup EXIT
+trap cleanup TERM

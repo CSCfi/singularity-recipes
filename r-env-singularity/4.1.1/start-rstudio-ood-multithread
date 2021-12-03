@@ -1,0 +1,76 @@
+#!/bin/bash
+
+# Start RStudio Server on OOD
+
+# R version
+RVER=4.1.1
+
+# Unset XDG_RUNTIME_DIR
+XDG_RUNTIME_DIR=""
+
+# Get RSTUDIO_UUID
+export RSTUDIO_UUID=$(uuidgen)
+echo $RSTUDIO_UUID > $TMPDIR/${USER}_secure-cookie-key
+
+# If existing Renviron, clear TMPDIR and OMP / PKG / SLURM variables
+if test -f ~/.Renviron; then
+    sed -i '/TMPDIR/d' ~/.Renviron
+    sed -i '/OMP/d' ~/.Renviron
+    sed -i '/PKG/d' ~/.Renviron
+    sed -i '/SLURM/d' ~/.Renviron
+fi
+
+# Clear out active RStudio sessions
+rm -rf ~/.rstudio/sessions/active/*
+
+# Add environment variables to Renviron
+echo "TMPDIR=$TMPDIR" >> ~/.Renviron
+singularity exec /appl/soft/math/r-env-singularity/${RVER}/${RVER}.sif \
+	printenv | grep -E 'OMP|PKG|SLURM' >> ~/.Renviron
+
+# Environment variables for multithreading
+echo "OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK" >> ~/.Renviron
+echo "OMP_PLACES=cores" >> ~/.Renviron
+echo "OMP_PROC_BIND=close" >> ~/.Renviron
+
+# Start RStudio Server
+
+mkdir -p "$TMPDIR/var/lib"
+mkdir -p "$TMPDIR/var/run"
+
+PASSWORD=$RSTUDIO_PASSWORD \
+RSTUDIO_SESSION_TIMEOUT='0' \
+singularity exec \
+-B $TMPDIR:$TMPDIR \
+-B $TMPDIR/var/lib:/var/lib/rstudio-server \
+-B $TMPDIR/var/run:/var/run/rstudio-server \
+-B /users:/users \
+-B /projappl:/projappl \
+-B /appl/data:/appl/data \
+-B /appl/opt:/appl/opt \
+-B /scratch:/scratch \
+-B /appl/soft/math/r-env-singularity/${RVER}/${RVER}-rpackages:/appl/soft/math/r-env-singularity/${RVER}/${RVER}-rpackages \
+/appl/soft/math/r-env-singularity/${RVER}/${RVER}.sif rserver \
+--www-port ${PORT} \
+--auth-none=0 \
+--auth-encrypt-password=0 \
+--server-data-dir "${TMPDIR}" \
+--secure-cookie-key-file $TMPDIR/${USER}_secure-cookie-key \
+--auth-pam-helper-path=pam-helper & pid=$!
+
+# Trap CTRL-C and wait for the server
+trap "kill -1 $pid" SIGINT
+wait $pid
+
+# Trap for Renviron cleanup upon exit
+
+function cleanup()
+{
+    sed -i '/TMPDIR/d' ~/.Renviron
+    sed -i '/OMP/d' ~/.Renviron
+    sed -i '/PKG/d' ~/.Renviron
+    sed -i '/SLURM/d' ~/.Renviron
+}
+
+trap cleanup EXIT
+trap cleanup TERM

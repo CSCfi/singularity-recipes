@@ -1,0 +1,49 @@
+#!/bin/bash
+
+# Start terminal version of R
+
+# R version
+RVER=4.1.1
+
+echo 'Launching R...'
+
+# Make sure script is run within a slurm job
+if [ -z "$SLURM_JOB_ID" ]
+then
+    echo "start-r-multithread can only be launched on compute nodes"
+    echo "See the r-env-singularity documentation on using R interactively:"
+    echo "https://docs.csc.fi/apps/r-env-singularity/"
+    exit 1
+fi
+
+# If existing Renviron, clear TMPDIR and OMP / PKG / SLURM variables
+if test -f ~/.Renviron; then
+    sed -i '/TMPDIR/d' ~/.Renviron
+    sed -i '/OMP/d' ~/.Renviron
+    sed -i '/PKG/d' ~/.Renviron
+    sed -i '/SLURM/d' ~/.Renviron
+fi
+
+# Add environment variables to Renviron
+echo "TMPDIR=$TMPDIR" >> ~/.Renviron
+
+# Match thread and core numbers
+export SINGULARITYENV_OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+# Thread affinity control
+export SINGULARITYENV_OMP_PLACES=cores
+export SINGULARITYENV_OMP_PROC_BIND=close
+
+# Start R
+singularity exec \
+-B $TMPDIR:$TMPDIR \
+-B /appl/opt:/appl/opt \
+-B /users:/users \
+-B /projappl:/projappl \
+-B /appl/data:/appl/data \
+-B /scratch:/scratch \
+-B /fmi:/fmi \
+-B /appl/soft/math/r-env-singularity/${RVER}/${RVER}-rpackages:/appl/soft/math/r-env-singularity/${RVER}/${RVER}-rpackages \
+-B /appl/opt/cluster_studio_xe2019/:/appl/opt/cluster_studio_xe2019 \
+/appl/soft/math/r-env-singularity/${RVER}/${RVER}.sif \
+R --no-save

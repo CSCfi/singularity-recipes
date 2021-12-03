@@ -1,0 +1,561 @@
+Bootstrap: library
+From: centos:7.7
+
+%labels
+
+## Container info
+
+  licensing_info="/usr/licensing.txt" 
+  maintainer=Jesse Harrison <jesse.harrison@csc.fi>
+
+%files
+
+## License files
+
+  intel-simplified-software-license.txt /usr/intel-simplified-software-license.txt
+  licensing.txt /usr/licensing.txt
+  nvidia-nccl-license.txt /usr/nvidia-nccl-license.txt
+
+## OneAPI repo
+
+  oneapi.repo /etc/yum.repos.d
+
+## RStudio Server files
+## https://github.com/rocker-org/rocker-versioned
+
+  disable_auth_rserver.conf /etc/rstudio/disable_auth_rserver.conf
+  pam-helper.sh /usr/lib/rstudio-server/bin/pam-helper
+  userconf.sh /etc/cont-init.d/userconf
+
+## cuDNN rpm file
+## requires membership in NVIDIA Developer Program
+## download x86_64 runtime lib manually from: https://developer.nvidia.com/cudnn
+
+  libcudnn8*.x86_64.rpm /opt/rpms/
+
+## JAGS tar file
+## https://sourceforge.net/projects/mcmc-jags/files/
+## Set JAGS version under %post to match this file
+
+  JAGS-*.tar.gz /opt/tar/
+
+## HDF5 tar file
+## https://www.hdfgroup.org/downloads/hdf5/source-code/
+## Set HDF5 version under %post to match this file
+
+  hdf5-*.tar.bz2 /opt/tar
+
+## SAGA tar file
+## (Earlier def files employ git clone)
+## Get the tarball from:
+## https://sourceforge.net/projects/saga-gis/files/SAGA%20-%207/
+
+  saga-*.tar.gz /opt/tar
+
+## S6 supervisor
+## (temporarily copied manually)
+
+  s6-*.tar.gz /opt/tar
+
+## Installation lists
+
+  # Library installation list
+  4.1.1-tf-centos7-libreqs.txt /opt/libreqs.txt
+
+  # Python package installation list
+  4.1.1-tf-centos7-pyreqs.txt /opt/pyreqs.txt
+
+%post
+
+## Make pam-helper + userconf executable
+
+  cd /usr/lib/rstudio-server/bin && chmod +x pam-helper
+  cd /etc/cont-init.d && chmod +x userconf
+  cd
+
+## Variables for installations
+
+  # Devtoolset and Python version
+  export DEVTOOLSET_VERSION=9
+  export PYTHON_VERSION=38
+
+  # R
+  # build date is yyyy-mm-dd
+  export BUILD_DATE=2021-10-05
+  export CRAN=${CRAN:-https://cloud.r-project.org/}
+  export R_BASEVER=4
+  export R_VERSION=4.1.1
+
+  # RStudio Server
+  export RSTUDIO_VERSION=1.4.1717
+  export S6_VERSION=v2.2.0.3
+  export S6_BEHAVIOUR_IF_STAGE2_FAILS=2
+  export PATH=/usr/lib/rstudio-server/bin:$PATH
+  export PANDOC_TEMPLATES_VERSION=${PANDOC_TEMPLATES_VERSION:-2.9}
+
+  # Needed for rgdal
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
+  export LD_RUN_PATH=$LD_RUN_PATH:/usr/local/lib
+  export LIBRARY_PATH=$LIBRARY_PATH:/usr/local/lib
+
+  # Intel OneMKL
+  export MKL_VERSION=2021.2.0
+
+  # GSL (GNU Scientific Library)
+  export GSL_VERSION=2.7
+
+  # JAGS
+  export JAGS_VERSION=4.3.0
+
+  # HDF5
+  export HDF5_VERSION=1.12.1
+
+  # GIS software versions (GDAL, GEOS, PROJ, SAGA)
+  export GDAL_DATA=/usr/share/gdal
+  export GDAL_VERSION=3.2.2
+  export GEOS_VERSION=3.9.1
+  export PROJ_VERSION=8.1.1
+  export PROJDATA_VERSION=1.6
+  export SAGA_VERSION=7.9.0
+
+  # GraphViz
+  # https://gitlab.com/graphviz/graphviz/-/releases
+  export GRAPHVIZ_VERSION=2.49.1
+
+  # wxGTK
+  export WX_GTK_VERSION=3.0.5
+
+  # SQLite
+  # Example format: 3.34.1 = 3340100
+  export SQLITE_VERSION=3360000
+  export SQLITE_YEAR=2021
+
+  # MOFED
+  # rhel7.8 works despite using rhel7.7
+  export MOFED_OS=rhel7.8
+  export MOFED_VERSION=5.0-1.0.0.0
+
+  # NVIDIA installations
+  export CUDA_VERSION=11-4
+  export NCCL_VERSION=2.11.4-1+cuda11.4
+  export NVIDIA_OS=rhel7
+
+  # Puhti paths
+  export R_PACKAGE_DIR=/appl/soft/math/r-env-singularity/4.1.1/4.1.1-rpackages
+  
+  # zlib
+  export ZLIB_VERSION=1.2.11
+
+  # General
+  export CC=gcc
+  export LANG=C
+  export LC_ALL=C
+  export OMPI_CC=gcc
+  export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/lib/pkgconfig
+  export TERM=xterm
+  unset TMPDIR
+
+## Installations
+
+# General installations
+
+  # Upgrade packages to most recent versions
+  yum -y upgrade
+
+  # Enable EPEL (required by NVIDIA packages)
+  yum -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+
+  # Newer gcc and Python
+  yum -y install centos-release-scl
+  yum -y install devtoolset-${DEVTOOLSET_VERSION}
+  yum -y install rh-python${PYTHON_VERSION}
+  yum -y install rh-python${PYTHON_VERSION}-python-devel
+  source /opt/rh/devtoolset-${DEVTOOLSET_VERSION}/enable
+  source /opt/rh/rh-python${PYTHON_VERSION}/enable
+
+  # PostgreSQL repository
+  # https://postgis.net/install/
+  yum -y install https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+
+  # yum libraries
+  xargs yum -y install < /opt/libreqs.txt
+
+  # Intel OneMKL
+
+  yum -y install intel-oneapi-mkl-${MKL_VERSION}.x86_64
+  source /opt/intel/oneapi/setvars.sh intel64
+
+  MKL="-L${MKLROOT}/lib/intel64	\
+	-Wl,--no-as-needed	\
+	-lmkl_gf_lp64		\
+	-lmkl_gnu_thread	\
+	-lmkl_core -lgomp	\
+ 	-lpthread -lm -ldl"
+
+  # wxGTK
+  wget https://github.com/wxWidgets/wxWidgets/releases/download/v${WX_GTK_VERSION}/wxWidgets-${WX_GTK_VERSION}.tar.bz2
+  tar -xf wxWidgets-${WX_GTK_VERSION}.tar.bz2
+  cd wxWidgets-${WX_GTK_VERSION}
+  mkdir gtk-build
+  cd gtk-build
+  ../configure --with-gtk=3
+  make -j5 && make install
+  ldconfig
+  cd
+
+  # zlib
+  wget http://zlib.net/zlib-${ZLIB_VERSION}.tar.gz
+  tar -xvzf zlib-${ZLIB_VERSION}.tar.gz
+  cd zlib-${ZLIB_VERSION}
+  ./configure --libdir=/lib64
+  make -j5 && make install
+  rm -f /lib64/libz.so.1.2.7
+  ldconfig
+  cd
+  rm zlib-${ZLIB_VERSION}.tar.gz
+
+  # JDK 16
+  # https://jdk.java.net/archive/
+  wget https://download.java.net/java/GA/jdk16.0.1/7147401fd7354114ac51ef3e1328291f/9/GPL/openjdk-16.0.1_linux-x64_bin.tar.gz
+  tar -zxvf openjdk-16.0.1_linux-x64_bin.tar.gz
+  mv jdk-16.0.1/ /usr/local/
+  export JAVA_HOME=/usr/local/jdk-16.0.1
+  export PATH=$PATH:$JAVA_HOME/bin
+  ldconfig
+  rm openjdk-16.0.1_linux-x64_bin.tar.gz
+
+  # GSL (GNU Scientific Library)
+  # Note: new URL
+  wget https://mirror.ibcp.fr/pub/gnu/gsl/gsl-${GSL_VERSION}.tar.gz
+  tar -zxvf gsl-${GSL_VERSION}.tar.gz
+  cd gsl-${GSL_VERSION}
+  ./configure
+  make -j5 && make install
+  ldconfig
+  cd
+  rm gsl-${GSL_VERSION}.tar.gz
+
+  # HDF5
+  cd /opt/tar && tar -xvjf hdf5-${HDF5_VERSION}.tar.bz2
+  cd hdf5-${HDF5_VERSION}
+  ./configure --prefix=/usr/local
+  make -j5 && make install
+  cd
+  rm /opt/tar/hdf5-${HDF5_VERSION}.tar.bz2
+
+  # SQLite
+  # https://www.sqlite.org/download.html
+  wget https://www.sqlite.org/${SQLITE_YEAR}/sqlite-autoconf-${SQLITE_VERSION}.tar.gz
+  tar -xvzf sqlite-autoconf-${SQLITE_VERSION}.tar.gz
+  cd sqlite-autoconf-${SQLITE_VERSION}
+  CFLAGS="-DSQLITE_ENABLE_COLUMN_METADATA=1" ./configure --libdir=/usr/lib64
+  make -j5 && make install
+  ldconfig
+  cd
+  rm sqlite-autoconf-${SQLITE_VERSION}.tar.gz
+
+  # JAGS
+  cd /opt/tar && tar -xvzf JAGS-${JAGS_VERSION}.tar.gz
+  cd JAGS-${JAGS_VERSION}
+  ./configure				\
+	--libdir=/usr/local/lib64	\
+	--with-blas="$MKL"
+  make -j5 && make install
+  ldconfig
+  cd
+  rm /opt/tar/JAGS-${JAGS_VERSION}.tar.gz
+  
+  # CLang
+  yum-config-manager --enable extras && yum makecache
+  yum -y install clang
+
+# Graphviz
+
+  wget https://gitlab.com/graphviz/graphviz/-/archive/${GRAPHVIZ_VERSION}/graphviz-${GRAPHVIZ_VERSION}.tar.gz
+  tar -xvzf graphviz-${GRAPHVIZ_VERSION}.tar.gz
+  cd graphviz-${GRAPHVIZ_VERSION}
+  ./autogen.sh
+  ./configure
+  make -j5 && make install
+  cd
+  rm graphviz-${GRAPHVIZ_VERSION}.tar.gz
+
+# R + RStudio Server
+
+  # R
+  wget https://cran.rstudio.com/src/base/R-${R_BASEVER}/R-${R_VERSION}.tar.gz
+  tar -xzvf R-${R_VERSION}.tar.gz
+  cd R-${R_VERSION}
+
+  ./configure 			\
+	--prefix=/usr		\
+	--with-blas="$MKL"	\
+	--with-lapack		\
+	--enable-R-shlib
+  make -j5 && make install
+  R CMD javareconf
+  cd
+  rm R-${R_VERSION}.tar.gz
+
+  # RStudio Server
+
+  # Set date-locked MRAN snapshot of CRAN (note: lib64 for CentOS, lib for Ubuntu18)
+  if [ -z "$BUILD_DATE" ]; then MRAN=$CRAN; \
+  else MRAN=https://cran.microsoft.com/snapshot/${BUILD_DATE}; fi
+  echo MRAN=$MRAN >> /etc/environment
+  echo "options(repos = c(CRAN='$MRAN'), download.file.method = 'libcurl')" >> /usr/lib64/R/etc/Rprofile.site
+
+  # Fix R package libpaths (helps RStudio Server find the right directories)
+  echo "R_LIBS_USER='/usr/lib64/R/library'" >> \
+  	/usr/lib64/R/etc/Renviron
+  echo "R_LIBS_SITE='${R_PACKAGE_DIR}'" >> \
+  	/usr/lib64/R/etc/Renviron	
+
+  # S6 supervisor
+  # https://github.com/just-containers/s6-overlay#installation
+  # Oct 19 21: For some reason fails at the moment, copying manually
+  # wget -P /tmp/ https://github.com/just-containers/s6-overlay/releases/download/${S6_VERSION}/s6-overlay-x86.tar.gz
+  # tar hzxf /tmp/s6-overlay-x86.tar.gz -C / --exclude=usr/bin/execlineb
+  # tar hzxf /tmp/s6-overlay-x86.tar.gz -C /usr ./bin/execlineb && $_clean
+  # rm /tmp/s6-overlay-x86.tar.gz
+
+  tar hzxf /opt/tar/s6-overlay-x86.tar.gz -C / --exclude=usr/bin/execlineb
+  tar hzxf /opt/tar/s6-overlay-x86.tar.gz -C /usr ./bin/execlineb && $_clean
+
+  # RStudio Server installation
+  RSTUDIO_URL="https://download2.rstudio.org/server/centos7/x86_64/rstudio-server-rhel-${RSTUDIO_VERSION}-x86_64.rpm"
+  wget $RSTUDIO_URL
+  yum -y install rstudio-server-rhel-${RSTUDIO_VERSION}-x86_64.rpm
+  rm rstudio-server-rhel-${RSTUDIO_VERSION}-x86_64.rpm
+
+  # Symlink pandoc & standard pandoc templates for system-wide use
+  ln -s /usr/lib/rstudio-server/bin/pandoc/pandoc /usr/bin
+  ln -s /usr/lib/rstudio-server/bin/pandoc/pandoc-citeproc /usr/bin
+  git clone --recursive --branch ${PANDOC_TEMPLATES_VERSION} https://github.com/jgm/pandoc-templates
+  mkdir -p /opt/pandoc/templates
+  cp -r pandoc-templates*/* /opt/pandoc/templates && rm -rf pandoc-templates*
+  mkdir /root/.pandoc && ln -s /opt/pandoc/templates /root/.pandoc/templates
+
+  # RStudio wants an /etc/R, will populate from $R_HOME/etc
+  mkdir -p /etc/R
+  echo 'if(is.na(Sys.getenv("HTTR_LOCALHOST", unset=NA))) { options(httr_oob_default = TRUE) }' >> /usr/lib64/R/etc/Rprofile.site
+  echo "PATH=${PATH}" >> /usr/lib64/R/etc/Renviron
+
+  # More robust file locking to avoid errors when using shared volumes
+  echo 'lock-type=advisory' >> /etc/rstudio/file-locks
+
+  # Texlive + a few R packages for RMarkdown
+  yum -y update && yum -y install 			\
+			pandoc 				\
+			texlive 			\
+			texlive-latex-extra 		\
+			texlive-plain-generic 		\
+			texlive-fonts-recommended	\
+			lmodern
+
+  # R packages for RMarkdown
+  R --slave -e 'install.packages("tinytex", repos = "https://cran.rstudio.com/")'
+  R --slave -e 'install.packages("blogdown", repos = "https://cran.rstudio.com/")'
+  R --slave -e 'install.packages("bookdown", repos = "https://cran.rstudio.com/")'
+  R --slave -e 'install.packages("rticles", repos = "https://cran.rstudio.com/")'
+  R --slave -e 'install.packages("rmdshower", repos = "https://cran.rstudio.com/")'
+  R --slave -e 'install.packages("xaringan", repos = "https://cran.rstudio.com/")'
+
+## Further R packages
+## (Selected packages that ran into errors when installing outside container)
+
+  R --slave -e 'install.packages("vroom", repos = "https://cran.rstudio.com/")'
+  R --slave -e 'install.packages("systemfonts", repos = "https://cran.rstudio.com/")'
+
+# GIS installations (GEOS, PROJ, GDAL, SAGA)
+
+  # GEOS
+  # http://download.osgeo.org/geos/
+  wget http://download.osgeo.org/geos/geos-${GEOS_VERSION}.tar.bz2
+  tar -xvjf geos-${GEOS_VERSION}.tar.bz2
+  cd geos-${GEOS_VERSION}
+  ./configure
+  make -j5 && make install
+  ldconfig
+  cd
+
+  # PROJ
+  # https://proj.org/download.html#current-release
+  wget https://download.osgeo.org/proj/proj-${PROJ_VERSION}.tar.gz
+  tar -xvzf proj-${PROJ_VERSION}.tar.gz
+  cd proj-${PROJ_VERSION}
+  ./configure
+  make -j5 && make install
+  echo /usr/local/lib | tee -a /etc/ld.so.conf.d/local.conf
+  ldconfig
+  cd
+  rm proj-${PROJ_VERSION}.tar.gz
+
+  # projdata
+  # https://proj.org/download.html#download
+  # (projsync --system-directory --all fails for some reason)
+  cd /usr/local/share/proj
+  wget https://download.osgeo.org/proj/proj-data-${PROJDATA_VERSION}.tar.gz
+  tar -xvzf proj-data-${PROJDATA_VERSION}.tar.gz
+  rm proj-data-${PROJDATA_VERSION}.tar.gz
+  cd
+
+  # GDAL
+  # http://download.osgeo.org/gdal/
+  wget http://download.osgeo.org/gdal/${GDAL_VERSION}/gdal-${GDAL_VERSION}.tar.gz
+  tar -xvzf gdal-${GDAL_VERSION}.tar.gz
+  cd gdal-${GDAL_VERSION}
+  ./configure                   \
+  --with-proj=/usr/local        \
+  --with-hdf5=/usr/local	\
+  --with-threads                \
+  --with-libtiff=internal	\
+  --with-geotiff=internal	\
+  --with-jpeg=internal          \
+  --with-gif=internal           \
+  --with-png=internal           \
+  --with-libz=internal
+  make -j5 && make install
+  ldconfig
+  cd
+  rm gdal-${GDAL_VERSION}.tar.gz
+
+  # SAGA 7.9.0
+  cd /opt/tar && tar -xvzf saga-${SAGA_VERSION}.tar.gz
+  cd saga-${SAGA_VERSION}
+  ./configure                           \
+        --libdir=/usr/local/lib64
+  make -j5 && make install
+  ldconfig
+  cd
+  rm /opt/tar/saga-${SAGA_VERSION}.tar.gz
+
+# Mellanox OFED + OpenMPI installations
+
+  wget https://www.mellanox.com/downloads/ofed/RPM-GPG-KEY-Mellanox
+  rpm --import RPM-GPG-KEY-Mellanox
+  rm RPM-GPG-KEY-Mellanox
+
+  cd /etc/yum.repos.d/
+  wget https://linux.mellanox.com/public/repo/mlnx_ofed/${MOFED_VERSION}/${MOFED_OS}/mellanox_mlnx_ofed.repo
+  yum -y install mlnx-ofed-all
+
+# NVIDIA + Python installations
+
+  # CUDA
+  cd /etc/yum.repos.d/
+  wget https://developer.download.nvidia.com/compute/cuda/repos/${NVIDIA_OS}/x86_64/cuda-${NVIDIA_OS}.repo
+  yum -y install nvidia-driver-latest-dkms cuda-${CUDA_VERSION}
+  yum -y install cuda-drivers
+
+  # cuDNN
+  rpm -i /opt/rpms/libcudnn8*.rpm
+  rm /opt/rpms/libcudnn8*.rpm
+
+  # NCCL
+  yum -y install libnccl-${NCCL_VERSION} libnccl-devel-${NCCL_VERSION} libnccl-static-${NCCL_VERSION}
+
+  # TensorFlow
+  pip install tensorflow
+
+  # Python packages
+  pip install -r /opt/pyreqs.txt
+  ldconfig
+
+  # yum upgrade
+  yum -y update && yum -y upgrade
+
+  # yum clean
+  yum clean all
+
+  # Tensorflow dynamic library fix
+  # https://github.com/tensorflow/tensorflow/issues/44777
+  cd /usr/local/cuda/lib64/
+  ln libcusolver.so.11 libcusolver.so.10
+
+%environment
+
+  # Devtoolset and Python version
+  export DEVTOOLSET_VERSION=9
+  export PYTHON_VERSION=38
+  source /opt/rh/devtoolset-${DEVTOOLSET_VERSION}/enable
+  source /opt/rh/rh-python${PYTHON_VERSION}/enable
+
+  # General
+  export BUILD_DATE=2021-10-05
+  export CC=gcc
+  export JAVA_HOME=/usr/local/jdk-16.0.1
+  export PATH=$PATH:$JAVA_HOME/bin
+  export LANG=C
+  export LC_ALL=C
+  unset MANPATH
+  
+  # R environment variables
+  # Some are Puhti-specific
+
+  export AWS_DEFAULT_REGION=''
+  export CRAN=${CRAN:-https://cloud.r-project.org/}
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/lib:/usr/lib:/usr/local/lib:/usr/lib64
+  export R_PACKAGE_DIR=/appl/soft/math/r-env-singularity/4.1.1/4.1.1-rpackages
+
+  export PANDOC_TEMPLATES_VERSION=${PANDOC_TEMPLATES_VERSION:-2.9}
+  export PATH=/appl/opt/cluster_studio_xe2019/compilers_and_libraries/linux/bin/intel64:$PATH
+  export PATH=/appl/opt/cluster_studio_xe2019/debugger_2019/gdb/intel64/bin:$PATH
+  export PATH=${R_PACKAGE_DIR}/Rmpi:$PATH
+  export PATH=${R_PACKAGE_DIR}/snow:$PATH
+  export PATH=/usr/lib/rstudio-server/bin:$PATH
+  export R_LIBS_SITE=${R_PACKAGE_DIR}
+  export R_LIBS_USER=/usr/lib64/R/library
+  export TERM=xterm
+  export TZ=Europe/Helsinki
+
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
+  export LD_RUN_PATH=$LD_RUN_PATH:/usr/local/lib
+  export LIBRARY_PATH=$LIBRARY_PATH:/usr/local/lib
+  export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/lib/pkgconfig
+
+  # GDAL
+  export GDAL_DATA=/usr/share/gdal
+
+  # MPI
+  export OMPI_CC=gcc
+  export OMPI_DIR=$(ls -1d /usr/mpi/gcc/openmpi-4.0.* | head -n1)
+  export PATH=$PATH:/opt/ucx/bin:$OMPI_DIR/bin
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/ucx/lib:$OMPI_DIR/lib64
+  export PMIX_MCA_gds=hash
+  export SINGULARITYENV_APPEND_LD_LIBRARY_PATH=$OMPI_DIR/lib
+  export SINGULARITYENV_APPEND_PATH=$OMPI_DIR/bin
+  export SLURM_MPI_TYPE=pmix_v2
+  export UCX_TLS=ib,posix,self 
+
+  # OpenMP
+  export OMP_NUM_THREADS=1
+  export OMP_AFFINITY_FORMAT="Process %P level %L thread %0.3n affinity %A"
+  export OMP_DISPLAY_AFFINITY=true
+
+  # NVIDIA
+  export CUDA_HOME=/usr/local/cuda
+  export LD_LIBRARY_PATH=/usr/local/cuda/lib64/:$LD_LIBRARY_PATH
+  export LD_LIBRARY_PATH=/usr/local/cuda/extras/CUPTI/lib64:$LD_LIBRARY_PATH
+  export PATH=/usr/local/cuda/bin:$PATH
+
+  # OneMKL
+  export CPATH=/opt/intel/oneapi/mkl/latest/include:/opt/intel/oneapi/compiler/2021.2.0/linux/include
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/intel/oneapi/mkl/latest/lib/intel64:/opt/intel/oneapi/compiler/2021.2.0/linux/lib:/opt/intel/oneapi/compiler/2021.2.0/linux/lib/x64:/opt/intel/oneapi/compiler/2021.2.0/linux/lib/emu:/opt/intel/oneapi/compiler/2021.2.0/linux/compiler/lib/intel64_lin:/opt/intel/oneapi/compiler/2021.2.0/linux/compiler/lib
+  export LIBRARY_PATH=$LIBRARY_PATH:/opt/intel/oneapi/mkl/latest/lib/intel64:/opt/intel/oneapi/compiler/2021.2.0/linux/compiler/lib/intel64_lin:/opt/intel/oneapi/compiler/2021.2.0/linux/lib
+  export MKLROOT=/opt/intel/oneapi/mkl/latest
+  export NLSPATH=/opt/intel/oneapi/mkl/latest/lib/intel64/locale/%l_%t/%N
+  export OCL_ICD_FILENAMES=/opt/intel/oneapi/compiler/2021.2.0/linux/lib/x64/libintelocl.so
+  export PATH=$PATH:/opt/intel/oneapi/mkl/latest/bin/intel64:/opt/intel/oneapi/compiler/2021.2.0/linux/bin/intel64:/opt/intel/oneapi/compiler/2021.2.0/linux/bin:/opt/intel/oneapi/compiler/2021.2.0/linux/ioc/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+  export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/opt/intel/oneapi/mkl/latest/tools/pkgconfig
+
+%runscript
+
+  exec /bin/bash R "$@"
+  exec /bin/bash /init "$@"
+
+%startscript
+
+  exec /bin/bash R "$@"
+  exec /bin/bash /init "$@"
+
