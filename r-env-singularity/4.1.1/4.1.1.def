@@ -146,6 +146,9 @@ From: centos:7.7
   # zlib
   export ZLIB_VERSION=1.2.11
 
+  # NetCDF
+  export NETCDF_VERSION=4.8.1
+
   # General
   export CC=gcc
   export LANG=C
@@ -242,6 +245,16 @@ From: centos:7.7
   make -j5 && make install
   cd
   rm /opt/tar/hdf5-${HDF5_VERSION}.tar.bz2
+
+  # NetCDF
+  wget https://downloads.unidata.ucar.edu/netcdf-c/${NETCDF_VERSION}/src/netcdf-c-${NETCDF_VERSION}.tar.gz
+  tar -zxvf netcdf-c-${NETCDF_VERSION}.tar.gz
+  cd netcdf-c-${NETCDF_VERSION}
+  ./configure \
+  	--with-hdf5=/usr/local
+  make -j5 && make install
+  cd
+  rm netcdf-c-${NETCDF_VERSION}.tar.gz
 
   # SQLite
   # https://www.sqlite.org/download.html
@@ -473,6 +486,10 @@ From: centos:7.7
   cd /usr/local/cuda/lib64/
   ln libcusolver.so.11 libcusolver.so.10
 
+# locate
+  yum -y install mlocate
+  updatedb
+
 %environment
 
   # Devtoolset and Python version
@@ -558,4 +575,3 @@ From: centos:7.7
 
   exec /bin/bash R "$@"
   exec /bin/bash /init "$@"
-
