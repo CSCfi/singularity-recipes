@@ -63,7 +63,6 @@ mesa-libGLU-devel
 minizip
 mpfr-devel
 mysql-devel
-netcdf-devel
 nss
 ogdi-devel
 openssh-server
