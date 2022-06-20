@@ -203,7 +203,7 @@ From: centos:7.7
 
 %environment
   export SLURM_MPI_TYPE=pmix_v3
-q  export PMIX_MCA_gds=hash
+  export PMIX_MCA_gds=hash
   source /opt/rh/devtoolset-9/enable
   source /opt/rh/rh-git218/enable
   export OMPI_DIR=$(ls -1d /usr/mpi/gcc/openmpi-4.1.* | head -n1)
