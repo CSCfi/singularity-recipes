@@ -50,7 +50,7 @@ RANLIB = ranlib
 LAPACK = -lopenblas
 SCALAP  = -L /opt/scalapack/lib -lscalapack 
 
-INCPAR = -I$(OMP_DIR)/include
+INCPAR = -I$(OMPI_DIR)/include
 
 LIBPAR = $(SCALAP) $(LAPACK)  -lmpi 
 

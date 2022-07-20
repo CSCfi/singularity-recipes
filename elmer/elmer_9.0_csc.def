@@ -140,9 +140,10 @@ From: centos:7.7
   #cmake3  -DCMAKE_INSTALL_PREFIX="/opt/parmmg" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUSE_SCOTCH:BOOL=FALSE  -DUSE_VTK:BOOL=FALSE -DBUILD_SHARED_LIBS:BOOL=TRUE -DDOWNLOAD_MMG=OFF -DMMG_DIR=/opt/src/mmg -DMMG_BUILDDIR=/opt/src/mmg/build -DLIBPARMMG_SHARED=ON -DLIBPARMMG_STATIC=OFF -DCMAKE_Fortran_FLAGS="-O3 -std=legacy -march=native -ffast-math -funroll-loops" ..
   make -j $(nrpoc) install
   export LD_LIBRARY_PATH="/opt/mmg/lib64:/opt/parmmg/lib64:$LD_LIBRARY_PATH"
+  cd /opt/src
+  rm -fr mmg/ ParMmg/
 
   # NN (for ScatteredDataInterpolator)
-  cd /opt/src
   git clone https://github.com/sakov/nn-c.git
   cd nn-c/nn
   export CFLAGS="-fPIC -O3 -march=native -ffast-math -funroll-loops"  
