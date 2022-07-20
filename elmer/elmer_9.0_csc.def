@@ -73,7 +73,7 @@ From: centos:7.7
   make install
   export LD_LIBRARY_PATH="/opt/netcdf/lib64:$LD_LIBRARY_PATH"
   cd /opt/src
-  git clone https://github.com/Unidata/netcdf-fortran
+  git clone --depth 1 --branch v4.5.2 https://github.com/Unidata/netcdf-fortran
   cd netcdf-fortran/
   mkdir build
   cd build/
