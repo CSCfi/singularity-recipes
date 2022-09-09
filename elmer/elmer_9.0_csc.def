@@ -24,7 +24,7 @@ From: centos:7.7
   source /opt/rh/rh-git218/enable
 
   # Install additional stuff
-  yum -y install wget cmake lbzip2 libsndfile numactl
+  yum -y install wget cmake lbzip2 libsndfile numactl zlib
 
   # Install Mellanox stuff and OpenMPI
   wget https://www.mellanox.com/downloads/ofed/RPM-GPG-KEY-Mellanox
@@ -177,9 +177,9 @@ From: centos:7.7
 	   -DWITH_ElmerIce:BOOL=TRUE \
 	   -DWITH_NETCDF:BOOL=TRUE \
            -DWITH_GridDataReader:BOOL=TRUE \
-           -DNetCDF_INCLUDE_DIR="/opt/netcdf/include" \
-           -DNetCDF_LIBRARY="/opt/netcdf/lib64/libnetcdf.so" \
-           -DNetCDFF_LIBRARY="/opt/netcdf/lib64/libnetcdff.so" \
+           -DNETCDF_INCLUDE_DIR="/opt/netcdf/include" \
+           -DNETCDF_LIBRARY="/opt/netcdf/lib64/libnetcdf.so" \
+           -DNETCDFF_LIBRARY="/opt/netcdf/lib64/libnetcdff.so" \
  	   -DWITH_Zoltan:BOOL=TRUE \
            -DWITH_Mumps:BOOL=TRUE \
            -DMUMPS_ROOT="/opt/mumps" \
