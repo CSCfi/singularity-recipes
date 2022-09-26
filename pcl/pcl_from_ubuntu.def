@@ -1,0 +1,26 @@
+## PCL (Singularity container)
+## without PCLpy
+
+Bootstrap: docker
+From: ubuntu:22.04
+
+%post
+    ## for apt to be noninteractive
+    export DEBIAN_FRONTEND=noninteractive
+    export DEBCONF_NONINTERACTIVE_SEEN=true
+    export TZ=Europe/Helsinki
+                
+    apt-get -y update
+    apt-get -y upgrade
+    apt-get -y install --fix-missing libpcl-dev pcl-tools
+	
+    apt-get clean	
+
+%environment
+
+## General environment variables
+
+  export LC_ALL=C.UTF-8
+  export LANG=C.UTF-8
+  export CC=gcc
+  unset MANPATH
