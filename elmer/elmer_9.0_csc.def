@@ -50,6 +50,7 @@ From: centos:7.7
   yum -y install openblas-devel 
   yum -y install m4
   yum -y install curl-devel
+  yum -y install hdf5-devel
   yum clean all
 
   which gcc
@@ -64,7 +65,7 @@ From: centos:7.7
   cd /opt/src
 
   # compile/install netcdf
-  git clone https://github.com/Unidata/netcdf-c.git
+  git clone --depth 1 --branch v4.6.3 https://github.com/Unidata/netcdf-c.git
   cd netcdf-c
   mkdir build 
   cd build/
@@ -77,7 +78,7 @@ From: centos:7.7
   cd netcdf-fortran/
   mkdir build
   cd build/
-  cmake3 -DCMAKE_INSTALL_PREFIX=/opt/netcdf  -DCMAKE_Fortran_FLAGS="-O3 -fopenmp" -DCMAKE_C_FLAGS="-O3 -fopenmp"  ..
+  cmake3 -DCMAKE_INSTALL_PREFIX=/opt/netcdf   -DENABLE_HDF5:BOOL=FALSE -DUSE_HDF5:BOOL=FALSE -DCMAKE_Fortran_FLAGS="-O3 -fopenmp" -DCMAKE_C_FLAGS="-O3 -fopenmp"  ..
   make -j  $(nproc)
   make install
   cd /opt/src
