@@ -1,0 +1,11 @@
+--- old/distributed.py	2022-05-24 10:16:48.200757202 +0000
++++ new/distributed.py	2022-05-24 10:18:03.703776563 +0000
+@@ -65,7 +65,7 @@
+     if rank == 0:
+         hostname_cmd = ["hostname -I"]
+         result = subprocess.check_output(hostname_cmd, shell=True)
+-        master_addr = result.decode('utf-8').split()[0]
++        master_addr = result.decode('utf-8').split()[1]
+     master_addr = comm.bcast(master_addr, root=0)
+ 
+     # Determine local rank by assuming hostnames are unique

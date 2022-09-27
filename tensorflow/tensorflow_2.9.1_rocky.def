@@ -1,0 +1,73 @@
+Bootstrap: docker
+From: rockylinux:8.5
+
+%labels
+  Author Mats Sjöberg <mats.sjoberg@csc.fi>
+  Author Markus Koskela <markus.koskela@csc.fi>   
+
+%files
+  requirements_tensorflow_2.9.txt /opt/requirements.txt
+
+%post
+  # dnf install -y 'dnf-command(config-manager)'
+  # dnf config-manager --enable powertools
+
+  # Upgrade packages to most recent versions
+  dnf -y upgrade
+
+  # Install additional packages
+  dnf -y install python39-devel git wget cmake libsndfile \
+      ncurses-devel libjpeg-turbo-devel libxkbcommon-x11
+
+  # We need newer nodejs
+  dnf module -y install nodejs:14/common
+
+  # Install Mellanox stuff and OpenMPI
+  wget https://www.mellanox.com/downloads/ofed/RPM-GPG-KEY-Mellanox
+  rpm --import RPM-GPG-KEY-Mellanox
+  rm RPM-GPG-KEY-Mellanox
+
+  cd /etc/yum.repos.d/
+  # MOFED
+  wget https://linux.mellanox.com/public/repo/mlnx_ofed/5.5-1.0.3.2/rhel8.5/mellanox_mlnx_ofed.repo
+  # dnf -y install mlnx-ofed-all
+  dnf -y install openmpi-4.1.2rc2 rdma-core ucx-ib
+
+  # Install CUDA, NCCL, CUDNN
+  cd /etc/yum.repos.d/
+  wget https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo
+  dnf -y install cuda-11-5
+  dnf -y install libnccl-2.11.4-1+cuda11.5 libnccl-devel-2.11.4-1+cuda11.5 libnccl-static-2.11.4-1+cuda11.5
+  dnf -y install libcudnn8-8.3.0.98-1.cuda11.5 libcudnn8-devel-8.3.0.98-1.cuda11.5
+
+  # Install TensorFlow and lots of other packages
+  pip3 install --upgrade pip
+  pip3 install wheel
+  pip3 install -r /opt/requirements.txt
+
+  # There have to be installed separately
+  pip3 install nvidia-pyindex
+  pip3 install nvidia-dlprof
+
+  # Settings for compiling stuff with MPI and CUDA
+  export OMPI_DIR=$(ls -1d /usr/mpi/gcc/openmpi-4.* | head -n1)
+  export PATH=/usr/local/cuda/bin:$OMPI_DIR/bin:/opt/vim/bin:$PATH
+  export LD_LIBRARY_PATH=$OMPI_DIR/lib64:$LD_LIBRARY_PATH
+
+  # Activate ipywidgets
+  /usr/local/bin/jupyter lab build
+
+  # Install Horovod (from git as release v0.24.3 does not work with TF 2.9)
+  HOROVOD_WITHOUT_PYTORCH=1 HOROVOD_WITH_TENSORFLOW=1 HOROVOD_WITHOUT_MXNET=1 \
+                            HOROVOD_WITH_MPI=1 HOROVOD_WITHOUT_GLOO=1 HOROVOD_GPU_OPERATIONS=NCCL \
+                            pip3 install git+https://github.com/horovod/horovod.git
+
+  dnf clean all
+
+%environment
+  export SLURM_MPI_TYPE=pmix_v3
+  export PMIX_MCA_gds=hash
+
+  export OMPI_DIR=$(ls -1d /usr/mpi/gcc/openmpi-4.* | head -n1)
+  export PATH=/usr/local/cuda/bin:$OMPI_DIR/bin:/opt/vim/bin:$PATH
+  export LD_LIBRARY_PATH=/usr/local/cuda/lib64/:$OMPI_DIR/lib64:$LD_LIBRARY_PATH
