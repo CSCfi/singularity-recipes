@@ -1,0 +1,42 @@
+Bootstrap: docker
+From: rockylinux:8.6
+
+%post
+
+	GCC_VERSION=9
+	OFED_VERSION=5.6-2.0.9.0
+	OS_VERSION_NAME=""
+	OS_NAME="rhel"
+	OS_VERSION=8.6
+	PMIX_VERSION=3.2.3
+	#UCX_VERSION
+	#LIBFABRIC
+	OPENMPI_VERSION=4.1.4rc1	
+
+
+    # Base tools and newer gcc version
+	dnf install -y dnf-plugins-core epel-release
+    dnf config-manager  --set-enabled powertools
+	dnf install -y make gdb  wget numactl-devel which
+	dnf -y install gcc-toolset-${GCC_VERSION}
+	source /opt/rh/gcc-toolset-${GCC_VERSION}/enable
+    
+    # Enable ofed rpm repo
+  	wget https://www.mellanox.com/downloads/ofed/RPM-GPG-KEY-Mellanox
+  	rpm --import RPM-GPG-KEY-Mellanox
+  	rm RPM-GPG-KEY-Mellanox
+  	cd /etc/yum.repos.d/
+  	wget https://linux.mellanox.com/public/repo/mlnx_ofed/$OFED_VERSION/${OS_NAME}${OS_VERSION}/mellanox_mlnx_ofed.repo
+	cd /
+
+    # Network library components
+	dnf -y install  rdma-core ucx-ib ucx-devel ucx-knem ucx-cma ucx-rdmacm
+
+    # OPENMPI
+    # If using RHEL8 stock gcc, the wrapper will silently fail to be added.
+	dnf -y install openmpi-${OPENMPI_VERSION}
+%environment
+    GCC_VERSION=9
+    source /opt/rh/gcc-toolset-${GCC_VERSION}/enable
+    MPI_ROOT=/usr/mpi/gcc/openmpi-4.1.4rc1
+    export PATH=$PATH:$MPI_ROOT/bin
