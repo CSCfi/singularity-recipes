@@ -1,0 +1,178 @@
+Bootstrap: docker
+From: rockylinux:8.5
+
+%labels
+  Author Mats Sjöberg <mats.sjoberg@csc.fi>
+
+%files
+  requirements_pytorch_2.0.0.txt /opt/requirements.txt
+
+%post
+  # Use all available cores for compilation
+  export MAKEFLAGS="-j$(nproc)"
+
+  # Enable powertools
+  dnf install -y dnf-plugins-core
+  dnf config-manager --set-enabled powertools
+
+  # Enable extra repositories
+  dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+  dnf install -y https://download1.rpmfusion.org/free/el/rpmfusion-free-release-8.noarch.rpm
+
+  # Upgrade packages to most recent versions
+  dnf -y upgrade
+
+  # Install additional packages
+  dnf -y install patch python39-devel git wget cmake libsndfile \
+      ncurses-devel turbojpeg turbojpeg-devel libxkbcommon-x11 \
+      openblas-devel ffmpeg libxml2-devel libxslt-devel
+
+  # Install newer gcc
+  dnf -y install gcc-toolset-9
+  source /opt/rh/gcc-toolset-9/enable
+
+  # We need newer nodejs
+  dnf module -y install nodejs:14/common
+
+  # Make "python" and "pip" commands work
+  alternatives --set python /usr/bin/python3
+  alternatives --install /usr/bin/pip pip /usr/bin/pip3 1
+
+  echo "/usr/local/lib/python3.9/site-packages" > /usr/lib/python3.9/site-packages/usr-local.pth   
+  echo "/usr/local/lib64/python3.9/site-packages" >> /usr/lib/python3.9/site-packages/usr-local.pth
+  
+  # For PyDreamer and MineRT
+  dnf install -y mesa-libGLU mesa-dri-drivers xrandr glx-utils xterm java-1.8.0-openjdk-headless xorg-x11-server-Xvfb
+  pip install pyglet==1.5.15
+
+  # Install Mellanox stuff and OpenMPI
+  wget https://www.mellanox.com/downloads/ofed/RPM-GPG-KEY-Mellanox
+  rpm --import RPM-GPG-KEY-Mellanox
+  rm RPM-GPG-KEY-Mellanox
+
+  cd /etc/yum.repos.d/
+  # MOFED
+  wget https://linux.mellanox.com/public/repo/mlnx_ofed/5.5-1.0.3.2/rhel8.5/mellanox_mlnx_ofed.repo
+  #wget https://linux.mellanox.com/public/repo/mlnx_ofed/5.6-1.0.3.3/rhel8.5/mellanox_mlnx_ofed.repo
+  # dnf -y install mlnx-ofed-all numactl-devel
+  #dnf -y install openmpi-4.1.2rc2 rdma-core ucx-ib numactl-devel
+  
+  # NOTE 2.12.2022: ucx-1.13.0 didn't work, forced to older ucx-1.12.0
+  dnf -y install openmpi-4.1.2rc2 rdma-core ucx-1.12.0 ucx-ib-1.12.0 numactl-devel
+
+  # Install CUDA, CUDNN, NCCL
+  cd /etc/yum.repos.d/
+  wget https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo
+  # dnf -y install cuda-11-5 \
+  #     libnccl-2.11.4-1+cuda11.5 libnccl-devel-2.11.4-1+cuda11.5 libnccl-static-2.11.4-1+cuda11.5 \
+  #     libcudnn8-8.3.3.40-1.cuda11.5 libcudnn8-devel-8.3.3.40-1.cuda11.5
+  # dnf -y install cuda-11-6 \
+  #     libnccl-2.12.12-1+cuda11.6 libnccl-devel-2.12.12-1+cuda11.6 libnccl-static-2.12.12-1+cuda11.6 \
+  #     libcudnn8-8.4.1.50-1.cuda11.6 libcudnn8-devel-8.4.1.50-1.cuda11.6
+  # dnf -y module install nvidia-driver:515-dkms
+  # dnf -y install cuda-11-6 \
+  #     libnccl-2.11.4-1+cuda11.6 libnccl-devel-2.11.4-1+cuda11.6 libnccl-static-2.11.4-1+cuda11.6 \
+  #     libcudnn8-8.4.1.50-1.cuda11.6 libcudnn8-devel-8.4.1.50-1.cuda11.6
+  dnf -y install cuda-11-7 \
+      libnccl-2.14.3-1+cuda11.7.x86_64 libnccl-devel-2.14.3-1+cuda11.7.x86_64 libnccl-static-2.14.3-1+cuda11.7.x86_64 \
+      libcudnn8-8.5.0.96-1.cuda11.7.x86_64 libcudnn8-devel-8.5.0.96-1.cuda11.7.x86_64
+  # dnf -y install cuda-11-7 \
+  #     libnccl-2.13.4-1+cuda11.7 libnccl-devel-2.13.4-1+cuda11.7 libnccl-static-2.13.4-1+cuda11.7 \
+  #     libcudnn8-8.5.0.96-1.cuda11.7 libcudnn8-devel-8.5.0.96-1.cuda11.7
+  # dnf -y install cuda-11-8 \
+  #     libnccl-2.15.5-1+cuda11.8.x86_64 libnccl-devel-2.15.5-1+cuda11.8.x86_64 libnccl-static-2.15.5-1+cuda11.8.x86_64 \
+  #     libcudnn8-8.9.0.131-1.cuda11.8.x86_64 libcudnn8-devel-8.9.0.131-1.cuda11.8.x86_64
+
+  # nvidia-driver:latest-dkms nvidia-driver:450-dkms
+
+  # Settings for compiling stuff with MPI and CUDA
+  export OMPI_DIR=$(ls -1d /usr/mpi/gcc/openmpi-4.* | head -n1)
+  export PATH=$OMPI_DIR/bin:$PATH
+  export LD_LIBRARY_PATH=$OMPI_DIR/lib64:$LD_LIBRARY_PATH
+  export PATH=/usr/local/cuda/bin:$PATH
+
+  # Install Python packages, including PyTorch
+  pip3 install wheel
+  pip3 install torch torchvision torchaudio torchtext --use-feature=2020-resolver \
+       --extra-index-url https://download.pytorch.org/whl/cu116 \
+       -r /opt/requirements.txt
+
+  /usr/local/bin/jupyter lab build
+
+  # Install recent Vim with Python-support
+  # It has to be done like this as default vim-enhanced is compiled against python3.6 version
+  VIMVER="9.0.0000"
+  cd /opt/
+  wget https://github.com/vim/vim/archive/refs/tags/v${VIMVER}.tar.gz
+  tar xf v${VIMVER}.tar.gz
+  cd vim-${VIMVER}
+  ./configure --enable-python3interp=yes --prefix=/opt/vim --enable-fail-if-missing
+  make && make install
+  cd
+  rm -rf /opt/vim-${VIMVER} v${VIMVER}.tar.gz
+
+  # Install OpenCV >= 4
+  cd /opt/
+  OPENCV_VER=4.6.0
+  wget https://github.com/opencv/opencv/archive/${OPENCV_VER}.zip
+  unzip ${OPENCV_VER}.zip
+  cd opencv-${OPENCV_VER}
+  mkdir build; cd build
+  cmake -DOPENCV_GENERATE_PKGCONFIG=ON ..
+  cmake --build .
+  make install
+  cd
+  rm -rf /opt/${OPENCV_VER}.zip /opt/opencv-${OPENCV_VER}
+  export LD_LIBRARY_PATH=/usr/local/lib64:$LD_LIBRARY_PATH
+
+  # Install faiss
+  yum install -y swig
+
+  cd /opt
+  git clone https://github.com/facebookresearch/faiss
+  cd faiss
+  cmake -B build . -DFAISS_ENABLE_GPU=ON -DFAISS_ENABLE_PYTHON=ON -DCMAKE_CUDA_ARCHITECTURES="70;80"
+  make -C build -j faiss
+
+  sed -ie 's/-doxygen//' build/faiss/python/CMakeFiles/swigfaiss_swig_compilation.dir/build.make
+  make -C build -j swigfaiss
+  cd build/faiss/python
+  python setup.py install
+  
+  cd /opt/faiss
+  make -C build install
+  cd /opt
+  rm -rf faiss
+
+  # Install ffcv
+  export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/lib64/pkgconfig
+
+  # NOTE 2.12.2022: some requirement of ffcv still tries to install
+  # "sklearn" instead of "scikit-learn"
+  SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True pip3 install ffcv
+
+  # Install DeepSpeed
+  pip3 install mpi4py
+  TORCH_CUDA_ARCH_LIST="7.0;8.0" \
+                      # DS_BUILD_OPS=1 DS_BUILD_AIO=0 DS_BUILD_TRANSFORMER_INFERENCE=0 DS_BUILD_FUSED_LAMB=0 \
+                      # DS_BUILD_SPARSE_ATTN=0 \
+                      pip3 install deepspeed
+  sed -i 's/hostname -I/hostname -s/g' /usr/local/lib/python3.9/site-packages/deepspeed/comm/comm.py
+
+  # Install Horovod
+  HOROVOD_BUILD_CUDA_CC_LIST=70,80 HOROVOD_WITH_PYTORCH=1 HOROVOD_WITHOUT_TENSORFLOW=1 HOROVOD_WITHOUT_MXNET=1 \
+                      HOROVOD_WITH_MPI=1 HOROVOD_WITHOUT_GLOO=1 HOROVOD_GPU_OPERATIONS=NCCL HOROVOD_NCCL_LINK=SHARED \
+                      pip3 install -v horovod
+  dnf clean all
+
+
+%environment
+  # export SLURM_MPI_TYPE=pmix_v3
+  # export PMIX_MCA_gds=hash
+  source /opt/rh/gcc-toolset-9/enable
+
+  export OMPI_DIR=$(ls -1d /usr/mpi/gcc/openmpi-4.* | head -n1)
+  export PATH=/usr/local/cuda/bin:$OMPI_DIR/bin:/opt/vim/bin:$PATH
+  export LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/local/lib64:$OMPI_DIR/lib64:$LD_LIBRARY_PATH
+
+  #export PYTHONPATH=$PYTHONPATH:/usr/local/lib/python3.9/site-packages:/usr/local/lib64/python3.9/site-packages

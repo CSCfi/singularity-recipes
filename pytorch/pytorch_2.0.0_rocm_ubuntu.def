@@ -1,0 +1,106 @@
+Bootstrap: docker
+From: rocm/dev-ubuntu-22.04:5.4-complete
+
+%labels
+  Author Mats Sjöberg <mats.sjoberg@csc.fi>
+
+%files
+  requirements_pytorch_2.0.0.txt /opt/requirements.txt
+
+%post
+  export DEBIAN_FRONTEND=noninteractive
+  export LC_ALL=C
+
+  # Update packages
+  apt update
+  apt upgrade -y
+
+  apt install -y python-is-python3 git autoconf python3-dev wget git vim libtool openjdk-8-jdk-headless xvfb \
+      python3-opengl libaio-dev libxslt1-dev libxml2-dev
+
+  #TODO libsndfile1 turbojpeg turbojpeg-devel ffmpeg libxkbcommon-x11 openblas-devel ??
+  #TODO check vim, opencv + ffcv from Puhti recipe
+
+  apt install -y rocm-libs rccl
+  #apt install -y miopen-hip-gfx90a-110kdb
+
+  # Nodejs required for JupyterLab stuff
+  apt install -y nodejs npm
+
+  # Fix for Java trying to find assistive techs in headless java
+  # https://askubuntu.com/questions/695560/assistive-technology-not-found-awterror
+  sed -i -e '/^assistive_technologies=/s/^/#/' /etc/java-8-openjdk/accessibility.properties
+
+
+  # Install MPICH
+  MPICH_VERSION="3.1.4"
+  cd /opt
+  wget https://www.mpich.org/static/downloads/${MPICH_VERSION}/mpich-${MPICH_VERSION}.tar.gz
+  tar xf mpich-${MPICH_VERSION}.tar.gz
+  rm mpich-${MPICH_VERSION}.tar.gz
+  cd mpich-${MPICH_VERSION}
+
+  ./configure --disable-fortran --enable-fast=all,O3 --prefix=/usr
+  make -j install
+  ldconfig
+  cd /opt
+  rm -rf mpich-3.1.4
+
+  # Install aws-ofi-rccl
+  apt install -y libfabric-dev
+
+  cd /opt
+  git clone https://github.com/ROCmSoftwarePlatform/aws-ofi-rccl
+  cd aws-ofi-rccl
+  ./autogen.sh
+  ./configure
+  make -j && make install
+  export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+  cd /opt
+  rm -rf aws-ofi-rccl
+
+  # Install PyTorch and various Python packages
+  # pip3 install --pre --no-cache-dir torch torchvision torchaudio torchtext \
+  #      --extra-index-url https://download.pytorch.org/whl/nightly/rocm5.4.2
+  # pip3 install --no-cache-dir -r /opt/requirements.txt
+
+  pip3 install --no-cache-dir torch torchvision torchaudio torchtext \
+       -r /opt/requirements.txt \
+       --extra-index-url https://download.pytorch.org/whl/rocm5.4.2
+
+  # Build Jupyter lab stuff
+  /usr/local/bin/jupyter lab build
+
+  # Install DeepSpeed
+  pip3 install mpi4py
+
+  cd /opt
+  git clone https://github.com/microsoft/DeepSpeed
+  cd DeepSpeed
+
+  # pre-building modules seems not to work for me after deepspeed v0.7.2
+  # sparse_attn is not compatible with ROCM
+  # DS_BUILD_OPS=1 DS_BUILD_SPARSE_ATTN=0 ./install.sh --allow_sudo
+
+  ./install.sh --allow_sudo
+  sed -i 's/hostname -I/hostname -s/g' /usr/local/lib/python3.10/dist-packages/deepspeed/comm/comm.py
+
+  cd /opt
+  rm -rf DeepSpeed
+  
+
+  # some old stuff...
+  # cp -a csrc/includes/patch/hip/hcc_detail/hip_cooperative_groups.h /opt/rocm/include/hip/hcc_detail/hip_cooperative_groups.h
+  # cp -a csrc/includes/patch/hip/hcc_detail/hip_cooperative_groups.h /opt/rocm/include/hip/hcc_detail/amd_hip_cooperative_groups.h
+  # cp -a csrc/includes/patch/hip/hcc_detail/hip_cooperative_groups_helper.h /opt/rocm/include/hip/hcc_detail/hip_cooperative_groups_helper.h
+ 
+  # sed -i 's/collections.Sequence/collections.abc.Sequence/g' /usr/local/lib/python3.10/dist-packages/deepspeed/runtime/config_utils.py
+  # sed -i 's/collections.Mapping/collections.abc.Mapping/g' /usr/local/lib/python3.10/dist-packages/deepspeed/runtime/config_utils.py
+  
+  apt clean
+
+
+%environment
+  export LC_ALL=C
+  export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+  export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
