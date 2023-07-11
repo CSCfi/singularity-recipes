@@ -1,0 +1,22 @@
+Bootstrap: docker
+From: mundialis/esa-snap:ubuntu
+
+%post
+    export TZ=Europe/Helsinki
+
+    #snapista requirements
+    pip install lxml requests attrs
+  
+    git clone https://github.com/snap-contrib/snapista.git
+    cd snapista/
+    /usr/bin/python3 setup.py install
+
+%environment
+
+## General environment variables
+
+  export LC_ALL=C.UTF-8
+  export LANG=C.UTF-8
+  export CC=gcc
+  #export JDK_HOME=$JAVA_HOME
+  unset MANPATH
