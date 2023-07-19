@@ -1,0 +1,11 @@
+qiskit
+wheel
+numpy
+matplotlib
+qiskit-nature
+qiskit-finance
+qiskit-optimization
+qiskit-machine-learning
+jupyter
+packaging
+jupyterlab
