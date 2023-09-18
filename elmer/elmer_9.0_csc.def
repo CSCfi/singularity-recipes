@@ -1,5 +1,5 @@
-Bootstrap: library
-From: centos:7.7
+Bootstrap: docker
+From: centos:7.9.2009
 
 %labels
   Author Thomas Zwinger <thomas.zwinger@csc.fi>
@@ -120,31 +120,29 @@ From: centos:7.7
   export LD_LIBRARY_PATH="/opt/mumps/lib:$LD_LIBRARY_PATH"
 
   # compile/install MMG/PARMMG
-  cd /opt/src
+  cd /opt/src || exit
   git clone https://github.com/MmgTools/mmg.git
-  cd mmg
-  # git checkout develop
+  cd mmg || exit
+  git checkout develop
   mkdir build
-  cd build 
-  cmake3 -DCMAKE_INSTALL_PREFIX="/opt/mmg" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS:BOOL=TRUE ..
-  make -j $(nrpoc) install
-  cd /opt/src
-  #rm -fr mmg
+  cd build || exit
+  cmake3 -DCMAKE_INSTALL_PREFIX="/opt/mmg" -D CMAKE_BUILD_TYPE=RelWithDebInfo -D BUILD_SHARED_LIBS:BOOL=TRUE -D MMG_INSTALL_PRIVATE_HEADERS=ON -D CMAKE_C_FLAGS="-fPIC  -g" -D CMAKE_CXX_FLAGS="-fPIC -std=c++11 -g"  ..
+  make -j "$(nproc)" install
+  cd /opt/src || exit
   git clone https://github.com/MmgTools/ParMmg.git
-  cd ParMmg
-  git checkout feature/tetFromTria-API
+  cd ParMmg || exit
+  git checkout develop
+  # Checkout the feature/tetFromTria-API branch
+  #git checkout 5b4622a6d0776d576e239fd8954008964b589f3e
   mkdir build
-  cd build
-  # build with existing MMG - doesn't work!
-  cmake3  -DCMAKE_INSTALL_PREFIX="/opt/parmmg" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUSE_SCOTCH:BOOL=FALSE  -DUSE_VTK:BOOL=FALSE -DBUILD_SHARED_LIBS:BOOL=TRUE -DDOWNLOAD_MMG=OFF -DMMG_DIR=/opt/src/mmg -DMMG_BUILDDIR=/opt/src/mmg/build -DLIBPARMMG_SHARED=ON -DLIBPARMMG_STATIC=OFF -DCMAKE_Fortran_FLAGS="-O3 -std=legacy -march=native -ffast-math -funroll-loops" ..
-  # build with own MMG
-  #cmake3  -DCMAKE_INSTALL_PREFIX="/opt/parmmg" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUSE_SCOTCH:BOOL=FALSE  -DUSE_VTK:BOOL=FALSE -DBUILD_SHARED_LIBS:BOOL=TRUE -DDOWNLOAD_MMG=OFF -DMMG_DIR=/opt/src/mmg -DMMG_BUILDDIR=/opt/src/mmg/build -DLIBPARMMG_SHARED=ON -DLIBPARMMG_STATIC=OFF -DCMAKE_Fortran_FLAGS="-O3 -std=legacy -march=native -ffast-math -funroll-loops" ..
-  make -j $(nrpoc) install
+  cd build || exit
+  cmake3 -D CMAKE_INSTALL_PREFIX="/opt/parmmg" -D CMAKE_BUILD_TYPE=RelWithDebInfo -D USE_VTK:BOOL=FALSE -D BUILD_SHARED_LIBS:BOOL=TRUE -D DOWNLOAD_MMG=OFF  -D MMG_DIR="/opt/mmg"  -D MMG_DIR_FOUND="/opt/mmg" -D MMG_libmmgtypes.h_DIRS="/opt/mmg/include/mmg/common" -D MMG_mmg_LIBRARY="/opt/mmg/lib64/libmmg.so"  ..
+  make -j "$(nproc)" install
   export LD_LIBRARY_PATH="/opt/mmg/lib64:/opt/parmmg/lib64:$LD_LIBRARY_PATH"
-  cd /opt/src
-  rm -fr mmg/ ParMmg/
+  cd /opt/src || exit
+  rm -rf mmg/ ParMmg/
 
-  # NN (for ScatteredDataInterpolator)
+
   git clone https://github.com/sakov/nn-c.git
   cd nn-c/nn
   export CFLAGS="-fPIC -O3 -march=native -ffast-math -funroll-loops"  
