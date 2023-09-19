@@ -1,0 +1,217 @@
+Bootstrap: docker
+From: rockylinux:8.5
+
+%labels
+  Author Thomas Zwinger <thomas.zwinger@csc.fi>
+
+%files
+  Makefile.inc /opt/Makefile.inc
+
+%post
+  dnf -y install dnf-plugins-core
+  dnf -y install epel-release
+  dnf -y config-manager --set-enabled powertools
+ 
+
+
+  dnf -y update
+  dnf -y groupinstall "Development Tools"
+  dnf groupinfo "Development Tools"
+
+
+  # Upgrade packages to most recent versions
+  yum -y upgrade
+  
+  # Install additional stuff
+  yum -y install wget git cmake bzip2-libs libsndfile numactl zlib 
+
+
+  # Install Mellanox stuff and OpenMPI
+  wget https://www.mellanox.com/downloads/ofed/RPM-GPG-KEY-Mellanox
+  rpm --import RPM-GPG-KEY-Mellanox
+  rm RPM-GPG-KEY-Mellanox
+
+  cd /etc/yum.repos.d/
+  # MOFED
+  wget https://linux.mellanox.com/public/repo/mlnx_ofed/5.5-1.0.3.2/rhel8.5/mellanox_mlnx_ofed.repo
+  # dnf -y install mlnx-ofed-all
+  dnf -y install openmpi-4.1.2rc2 rdma-core ucx-ib
+
+  # Settings for compiling stuff with MPI and CUDA
+  export OMPI_DIR=$(ls -1d /usr/mpi/gcc/openmpi-4.* | head -n1)
+  export PATH=$OMPI_DIR/bin:/opt/vim/bin:$PATH
+  export LD_LIBRARY_PATH=$OMPI_DIR/lib64:$LD_LIBRARY_PATH
+
+  # additionally needed libraries
+  yum -y install openblas-devel 
+  yum -y install m4
+  yum -y install curl-devel
+  yum -y install hdf5-devel
+  yum clean all
+
+  which gcc
+  which mpicc
+  which gfortran
+  which mpif90
+  mpicc --showall
+  mpif90 --showall
+
+  # compiling libraries
+  mkdir  /opt/src
+  cd /opt/src
+
+  # compile/install netcdf
+  git clone --depth 1 --branch v4.6.3 https://github.com/Unidata/netcdf-c.git
+  cd netcdf-c
+  mkdir build 
+  cd build/
+  cmake3 -DCMAKE_INSTALL_PREFIX=/opt/netcdf  -DCMAKE_C_FLAGS="-O3 -fopenmp" -DENABLE_HDF5:BOOL=FALSE ..
+  make -j $(nproc)
+  make install
+  export LD_LIBRARY_PATH="/opt/netcdf/lib64:$LD_LIBRARY_PATH"
+  cd /opt/src
+  git clone --depth 1 --branch v4.5.2 https://github.com/Unidata/netcdf-fortran
+  cd netcdf-fortran/
+  mkdir build
+  cd build/
+  cmake3 -DCMAKE_INSTALL_PREFIX=/opt/netcdf   -DENABLE_HDF5:BOOL=FALSE -DUSE_HDF5:BOOL=FALSE -DCMAKE_Fortran_FLAGS="-O3 -fopenmp" -DCMAKE_C_FLAGS="-O3 -fopenmp"  ..
+  make -j  $(nproc)
+  make install
+  cd /opt/src
+  rm -fr netcdf-c netcdf-fortran
+  
+
+  # compile/install hypre
+  git clone https://github.com/hypre-space/hypre.git
+  cd /opt/src/hypre/src
+  ./configure --with-openmp --with-blas --with-lapack --prefix="/opt/hypre"  CC="mpicc -fPIC -O3 -march=native"
+  make -j $(nproc)
+  make install
+  cd /opt/src
+  rm -fr hypre
+  export LD_LIBRARY_PATH="/opt/hypre/lib:$LD_LIBRARY_PATH"
+  
+  # compile/install BLACS/Scalapack (needed by MUMPS)
+  git clone https://github.com/Reference-ScaLAPACK/scalapack.git
+  cd scalapack
+  mkdir build
+  cd build
+  cmake3 -DCMAKE_INSTALL_PREFIX=/opt/scalapack  -DBUILD_SHARED_LIBS=ON -DCMAKE_C_FLAGS="-O3 -fPIC" -DCMAKE_Fortran_FLAGS="-O3 -fPIC" ..
+  make -j $(nproc) install
+  cd /opt/src
+  rm -fr scalapack
+  export LD_LIBRARY_PATH="/opt/scalapack/lib:$LD_LIBRARY_PATH"
+
+  # compile/install MUMPS
+  git clone https://github.com/cfwen/mumps.git
+  cd mumps
+  mkdir lib
+  cp /opt/Makefile.inc ./
+  make -j $(nproc)
+  mkdir /opt/mumps
+  mv lib /opt/mumps
+  mv include /opt/mumps
+  cd ..
+  rm -fr mumps
+  export LD_LIBRARY_PATH="/opt/mumps/lib:$LD_LIBRARY_PATH"
+
+  # compile/install MMG/PARMMG
+  cd /opt/src || exit
+  git clone https://github.com/MmgTools/mmg.git
+  cd mmg || exit
+  git checkout develop
+  mkdir build
+  cd build || exit
+  cmake3 -DCMAKE_INSTALL_PREFIX="/opt/mmg" -D CMAKE_BUILD_TYPE=RelWithDebInfo -D BUILD_SHARED_LIBS:BOOL=TRUE -D MMG_INSTALL_PRIVATE_HEADERS=ON -D CMAKE_C_FLAGS="-fPIC  -g" -D CMAKE_CXX_FLAGS="-fPIC -std=c++11 -g"  ..
+  make -j "$(nproc)" install
+  cd /opt/src || exit
+  git clone https://github.com/MmgTools/ParMmg.git
+  cd ParMmg || exit
+  git checkout develop
+  # Checkout the feature/tetFromTria-API branch
+  #git checkout 5b4622a6d0776d576e239fd8954008964b589f3e
+  mkdir build
+  cd build || exit
+  cmake3 -D CMAKE_INSTALL_PREFIX="/opt/parmmg" -D CMAKE_BUILD_TYPE=RelWithDebInfo -D USE_VTK:BOOL=FALSE -D BUILD_SHARED_LIBS:BOOL=TRUE -D DOWNLOAD_MMG=OFF  -D MMG_DIR="/opt/mmg"  -D MMG_DIR_FOUND="/opt/mmg" -D MMG_libmmgtypes.h_DIRS="/opt/mmg/include/mmg/common" -D MMG_mmg_LIBRARY="/opt/mmg/lib64/libmmg.so"  ..
+  make -j "$(nproc)" install
+  export LD_LIBRARY_PATH="/opt/mmg/lib64:/opt/parmmg/lib64:$LD_LIBRARY_PATH"
+  cd /opt/src || exit
+  rm -rf mmg/ ParMmg/
+
+
+  git clone https://github.com/sakov/nn-c.git
+  cd nn-c/nn
+  export CFLAGS="-fPIC -O3 -march=native -ffast-math -funroll-loops"  
+  ./configure --prefix="/opt/nn"
+  make clean
+  gcc -c -DTRILIBRARY -fPIC -O2 -w -ffloat-store -I. triangle.c
+  make -j $(nproc) install
+  cd /opt/src
+  rm -fr nn-c
+
+  # csa
+  git clone https://github.com/sakov/csa-c.git
+  cd csa-c/csa
+  ./configure --prefix="/opt/csa"
+  make -j $(nproc) install
+  cd /opt/src
+  rm -fr csa-c
+
+  export LD_LIBRARY_PATH="/opt/nn/lib:/opt/csa/lib:$LD_LIBRARY_PATH"
+
+  # and, finally, Elmer
+  git clone https://github.com/ElmerCSC/elmerfem.git
+  cd elmerfem
+  git submodule update --init
+  mkdir build
+  cd build
+  cmake3 ../ -DCMAKE_INSTALL_PREFIX=/opt/elmer \
+           -DWITH_MPI:BOOL=TRUE \
+           -DWITH_LUA:BOOL=TRUE \
+           -DWITH_OpenMP:BOOL=TRUE \
+	   -DWITH_ElmerIce:BOOL=TRUE \
+	   -DWITH_NETCDF:BOOL=TRUE \
+           -DWITH_GridDataReader:BOOL=TRUE \
+           -DNETCDF_INCLUDE_DIR="/opt/netcdf/include" \
+           -DNETCDF_LIBRARY="/opt/netcdf/lib64/libnetcdf.so" \
+           -DNETCDFF_LIBRARY="/opt/netcdf/lib64/libnetcdff.so" \
+ 	   -DWITH_Zoltan:BOOL=TRUE \
+           -DWITH_Mumps:BOOL=TRUE \
+           -DMUMPS_ROOT="/opt/mumps" \
+           -DSCALAPACK_LIBRARIES="-L/opt/scalapack/lib -lscalapack" \
+           -DWITH_Hypre:BOOL=TRUE \
+           -DHYPRE_ROOT="/opt/hypre" \
+           -DWITH_ScatteredDataInterpolator:BOOL=TRUE \
+           -DCSA_LIBRARY="/opt/csa/lib/libcsa.a" \
+           -DCSA_INCLUDE_DIR="/opt/csa/include" \
+           -DNN_INCLUDE_DIR="/opt/nn/include" \
+           -DNN_LIBRARY="/opt/nn/lib/libnn.a" \
+           -DWITH_MMG:BOOL=TRUE \
+           -DMMG_INCLUDE_DIR="/opt/mmg/include/" \
+           -DMMG_LIBRARY="/opt/mmg/lib64/libmmg.so" \
+	   -DMMG_LIBDIR="/opt/mmg/lib64" \
+	   -DPARMMG_INCLUDE_DIR="/opt/parmmg/include" \
+	   -DPARMMG_LIBRARY="/opt/parmmg/lib64/libparmmg.so" 
+
+  make -j $(nproc) install
+  cd /opt/src
+  rm -fr elmerfem 	
+
+%environment
+  export SLURM_MPI_TYPE=pmix_v3
+  export PMIX_MCA_gds=hash
+  source /opt/rh/devtoolset-9/enable
+  source /opt/rh/rh-git218/enable
+  export OMPI_DIR=$(ls -1d /usr/mpi/gcc/openmpi-4.1.* | head -n1)
+  export ELMER_HOME="/opt/elmer"
+  export PATH=$OMPI_DIR/bin:$ELMER_HOME/bin:$PATH
+  export LD_LIBRARY_PATH=$OMPI_DIR/lib64:$ELMER_HOME/include:$ELMER_HOME/lib:/opt/elmer/share/elmersolver/lib:/opt/hypre/lib:/opt/scalapack/lib:/opt/mumps/lib:/opt/netcdf/lib64:/opt/mmg/lib64:/opt/parmmg/lib64:/opt/nn/lib:/opt/csa/lib:$LD_LIBRARY_PATH
+  export MPI_C_LIBRARIES=$OMPI_DIR/lib64/libmpi.so
+  export MPI_C_INCLUDE_PATH=$OMPI_DIR/include
+  export MPI_C_COMPILER=$OMPI_DIR/bin/mpicc 
+  export MPI_Fortran_COMPILER=$OMPI_DIR/bin/mpif90
+  export MPI_CXX_COMPILER=$OMPI_DIR/bin/mpicxx
+ 
+
+
+
