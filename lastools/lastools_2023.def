@@ -12,6 +12,14 @@ From: ubuntu:20.04
     apt-get -y update
     apt-get -y upgrade
     apt-get -y install --fix-missing wget zip
+
+    # Add missing geotiff and png libraries
+    apt-get install -y libgeotiff-dev libpng-dev
+    # Two different version are for some strange reason needed,
+    # Add symlinks for older versions
+    cd /lib/x86_64-linux-gnu/
+    ln -s libpng16.so.16 libpng14.so.14
+    ln -s libgeotiff.so.5 libgeotiff.so.2
 	
 	# Download and unzip the Linux version of Lastools
     mkdir -p /opt/LAStools/serf/geo
