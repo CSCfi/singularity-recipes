@@ -1,45 +1,13 @@
-BootStrap: docker
-From: ubuntu:22.04
+BootStrap: docker 
+From: ubuntu:20.04 
 
 %post
   export DEBIAN_FRONTEND="noninteractive"
-  apt-get update && apt-get install -y \
-    automake \
-    build-essential \
-    clang-12 \
-    cmake \
-    libboost-dev \
-    libboost-filesystem-dev \
-    libboost-program-options-dev \
-    libboost-system-dev \
-    libboost-thread-dev \
-    libeigen3-dev \
-    libgdal-dev \
-    libomp-12-dev \
-    libtbb-dev \
-    qt5-qmake \
-    qtbase5-dev \
-    qtbase5-dev-tools \
-    qtchooser \
-    qtcreator \
-    unzip \
-    wget
-  wget https://github.com/zonationteam/Zonation5/releases/download/v1.0/z5src-v1.0.zip
-  unzip z5src-v1.0.zip
-  cd z5-v1.0
-  cp /usr/share/automake-1.16/config.guess 3rdparty/fftss/
-  mkdir build && cd build
-  cmake -DCMAKE_VERBOSE_MAKEFILE=true \
-    -DCMAKE_INSTALL_PREFIX=/usr \
-    -DCMAKE_PREFIX_PATH=$QT_PATH \
-    -DCMAKE_CXX_COMPILER=/usr/bin/clang++-12 \
-    -DCMAKE_C_COMPILER=/usr/bin/clang-12 \
-    -DCMAKE_CXX_FLAGS_RELEASE=-O2 \
-    -DGUI=ON \
-    -DCMAKE_BUILD_TYPE=Release ..
-  make && make install
-  cp /z5-v1.0/3rdparty/vdt/build/lib/libvdt.so /usr/lib
-  rm -r /z5-v1.0
-
-%runscript
-  exec /usr/bin/z5 "$@"
+  apt-get update
+  apt install -y libexpat1 libkeyutils1 libglib2.0-0 libfontconfig1 libfreetype6 libgl1 wget unzip 
+  wget https://github.com/zonationteam/Zonation5/releases/download/v1.0/Zonation5_Linux.zip
+  unzip Zonation5_Linux.zip
+  ./zonation5 --appimage-extract
+  rm $(find squashfs-root -name '*.debug')
+  chmod -R 755 /squashfs-root  
+  rm zonation5 Zonation5_Linux.zip 
