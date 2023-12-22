@@ -1,0 +1,32 @@
+## Seismic unix (Singularity container) 
+## These commands were used with Apptainer to create the container in sandbox mode.
+## make install asks to agree to license terms and a few other time "yes", so not possible to use directly to create container.
+  
+Bootstrap: docker
+From: ubuntu:22.04
+
+%post
+    ## for apt to be noninteractive
+    export DEBIAN_FRONTEND=noninteractive
+    export DEBCONF_NONINTERACTIVE_SEEN=true
+    export CWPROOT=/usr/local/cwp
+    export PATH=$PATH:$CWPROOT/bin:.
+    export TZ=Europe/Helsinki
+    			
+    apt-get -y update
+    apt-get -y upgrade
+    apt-get -y install --fix-missing wget zip xorg gcc libx11-dev libxt-dev libxext-dev make libmotif-dev libtirpc-dev nano
+    
+    mkdir -p /usr/local/cwp
+    cd /usr/local/cwp
+    
+    wget -O cwp_su_all_44R28.tgz 'https://nextcloud.seismic-unix.org/s/LZpzc8jMzbWG9BZ/download?path=%2F&files=cwp_su_all_44R28.tgz'
+    
+    gunzip cwp_su_all_44R28.tgz
+    tar -xvf cwp_su_all_44R28.tar
+
+    cp $CWPROOT/src/config/Makefile.config_Linux_Ubuntu_22.04 $CWPROOT/src/Makefile.config
+
+    make install
+    make xtinstall
+    rm /usr/local/cwp/cwp_su_all_44R28.tar
