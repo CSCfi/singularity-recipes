@@ -1,0 +1,69 @@
+Bootstrap: docker
+From: rockylinux:8.6
+
+%post
+
+	GCC_VERSION=9
+	OFED_VERSION=5.6-2.0.9.0
+	OS_VERSION_NAME=""
+	OS_NAME="rhel"
+	OS_VERSION=8.6
+	PMIX_VERSION=3.2.3
+	#UCX_VERSION
+	#LIBFABRIC
+	OPENMPI_VERSION=4.1.4rc1	
+	MPICH_VERSION=4.1
+
+
+    # Base tools and newer gcc version
+	dnf install -y dnf-plugins-core epel-release
+    dnf config-manager  --set-enabled powertools
+	dnf install -y make gdb  wget numactl-devel which
+	dnf install -y findutils
+	dnf -y install gcc-toolset-${GCC_VERSION}
+	source /opt/rh/gcc-toolset-${GCC_VERSION}/enable
+    
+    # Enable ofed rpm repo
+  	wget https://www.mellanox.com/downloads/ofed/RPM-GPG-KEY-Mellanox
+  	rpm --import RPM-GPG-KEY-Mellanox
+  	rm RPM-GPG-KEY-Mellanox
+  	cd /etc/yum.repos.d/
+  	wget https://linux.mellanox.com/public/repo/mlnx_ofed/$OFED_VERSION/${OS_NAME}${OS_VERSION}/mellanox_mlnx_ofed.repo
+	cd /
+
+	### PMIX 
+	dnf -y install libevent libevent-devel hwloc hwloc-devel
+	cd /opt
+	mkdir pmix
+	wget https://github.com/openpmix/openpmix/releases/download/v3.2.3/pmix-3.2.3.tar.gz
+	tar -xvf pmix-3.2.3.tar.gz
+	cd pmix-3.2.3
+	./configure --prefix=/opt/pmix
+	make 
+	make install
+
+    # Network library components
+	dnf -y install  rdma-core ucx-ib ucx-devel ucx-knem ucx-cma ucx-rdmacm
+    # No devel rpm in repo
+	wget https://gitlab.inria.fr/knem/knem/-/raw/knem-1.1.4/common/knem_io.h?inline=false -O knem_io.h
+	mv knem_io.h /usr/include
+	
+    # mpich dependencies
+    dnf -y install knem uuid uuid-devel
+    # Required to generate fortran bindings
+	dnf -y install python3
+
+	cd /opt
+	mkdir mpich
+	wget -q http://www.mpich.org/static/downloads/4.1/mpich-$MPICH_VERSION.tar.gz
+    tar xf mpich-$MPICH_VERSION.tar.gz
+    cd mpich-$MPICH_VERSION
+	./configure  --with-pmi=pmix --with-pmix=/opt/pmix --with-ucx=/usr --with-device=ch4:ucx --disable-cxx --enable-fortran --prefix=/opt/mpich || { cp config.log /tmp ; exit 1 ;}
+	make -j 20
+	make install
+
+%environment
+   GCC_VERSION=9
+   source /opt/rh/gcc-toolset-${GCC_VERSION}/enable
+   MPI_ROOT=/opt/mpich
+   export PATH=$PATH:$MPI_ROOT/bin 

@@ -1,0 +1,53 @@
+## Lastools (Singularity container)
+
+Bootstrap: docker
+From: ubuntu:20.04
+
+%post
+    ## for apt to be noninteractive
+    export DEBIAN_FRONTEND=noninteractive
+    export DEBCONF_NONINTERACTIVE_SEEN=true
+    export TZ=Europe/Helsinki
+                
+    apt-get -y update
+    apt-get -y upgrade
+    apt-get -y install --fix-missing wget zip
+
+    # Add missing geotiff and png libraries
+    apt-get install -y libgeotiff-dev libpng-dev
+    # Two different version are for some strange reason needed,
+    # Add symlinks for older versions
+    cd /lib/x86_64-linux-gnu/
+    ln -s libpng16.so.16 libpng14.so.14
+    ln -s libgeotiff.so.5 libgeotiff.so.2
+	
+	# Download and unzip the Linux version of Lastools
+    mkdir -p /opt/LAStools/serf/geo
+    cd /opt/LAStools
+    wget https://downloads.rapidlasso.de/lastools.tar.gz
+    tar -xvzf lastools.tar.gz	 
+	
+	# Download and unzip the Windows version of Lastools
+	# copy .csv files missing from Linux version
+	mkdir winlastools
+	cd winlastools
+	wget https://downloads.rapidlasso.de/LAStools.zip
+	unzip LAStools.zip
+	cp -r LAStools/bin/serf/geo/ /opt/LAStools/serf
+	
+	# Clean it up
+	cd /opt/LAStools
+    rm lastools.tar.gz	
+	rm -rf winlastools
+    apt-get clean	
+
+%environment
+
+## General environment variables
+
+  export LC_ALL=C.UTF-8
+  export LANG=C.UTF-8
+  export CC=gcc
+  export PATH=$PATH:/opt/LAStools
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/LAStools
+  unset MANPATH

@@ -1,5 +1,5 @@
 Bootstrap: docker
-From: centos:7.9.2009
+From: rockylinux:8.5
 
 %labels
   Author Thomas Zwinger <thomas.zwinger@csc.fi>
@@ -8,23 +8,23 @@ From: centos:7.9.2009
   Makefile.inc /opt/Makefile.inc
 
 %post
+  dnf -y install dnf-plugins-core
+  dnf -y install epel-release
+  dnf -y config-manager --set-enabled powertools
+ 
+
+
+  dnf -y update
+  dnf -y groupinstall "Development Tools"
+  dnf groupinfo "Development Tools"
+
+
   # Upgrade packages to most recent versions
   yum -y upgrade
-
-  # Enable EPEL (required by NVIDIA packages)
-  yum -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-
-  # Install newer gcc 
-  yum -y install centos-release-scl
-  yum -y install devtoolset-9
-  yum -y install rh-git218
-  yum -y remove cmake
-  yum -y install cmake3
-  source /opt/rh/devtoolset-9/enable
-  source /opt/rh/rh-git218/enable
-
+  
   # Install additional stuff
-  yum -y install wget cmake lbzip2 libsndfile numactl zlib
+  yum -y install wget git cmake bzip2-libs libsndfile numactl zlib 
+
 
   # Install Mellanox stuff and OpenMPI
   wget https://www.mellanox.com/downloads/ofed/RPM-GPG-KEY-Mellanox
@@ -32,19 +32,15 @@ From: centos:7.9.2009
   rm RPM-GPG-KEY-Mellanox
 
   cd /etc/yum.repos.d/
+  # MOFED
+  wget https://linux.mellanox.com/public/repo/mlnx_ofed/5.5-1.0.3.2/rhel8.5/mellanox_mlnx_ofed.repo
+  # dnf -y install mlnx-ofed-all
+  dnf -y install openmpi-4.1.2rc2 rdma-core ucx-ib
 
-  # MOFED 5.5 (needed by RHEL8)
-  wget https://linux.mellanox.com/public/repo/mlnx_ofed/5.5-1.0.3.2/rhel7.8/mellanox_mlnx_ofed.repo
-  yum -y install mlnx-ofed-all
-
-  export OMPI_DIR=$(ls -1d /usr/mpi/gcc/openmpi-4.1.* | head -n1)
-  export PATH=$OMPI_DIR/bin:$PATH
+  # Settings for compiling stuff with MPI and CUDA
+  export OMPI_DIR=$(ls -1d /usr/mpi/gcc/openmpi-4.* | head -n1)
+  export PATH=$OMPI_DIR/bin:/opt/vim/bin:$PATH
   export LD_LIBRARY_PATH=$OMPI_DIR/lib64:$LD_LIBRARY_PATH
-  export MPI_C_LIBRARIES=$OMPI_DIR/lib64/libmpi.so
-  export MPI_C_INCLUDE_PATH=$OMPI_DIR/include
-  export MPI_C_COMPILER=$OMPI_DIR/bin/mpicc 
-  export MPI_Fortran_COMPILER=$OMPI_DIR/bin/mpif90
-  export MPI_CXX_COMPILER=$OMPI_DIR/bin/mpicxx
 
   # additionally needed libraries
   yum -y install openblas-devel 

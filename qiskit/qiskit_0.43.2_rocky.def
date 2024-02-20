@@ -1,0 +1,125 @@
+Bootstrap: docker
+From: rockylinux:8.5
+
+%labels
+  Author Joona Kareinen <joona.kareinen@csc.fi>
+
+%files
+  requirements_qiskit_0.43.2.txt /opt/requirements.txt
+
+%post
+  # Use all available cores for compilation
+  export MAKEFLAGS="-j$(nproc)"
+
+  # Enable powertools
+  dnf install -y dnf-plugins-core
+  dnf config-manager --set-enabled powertools
+
+  # Enable extra repositories
+  dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+  dnf install -y https://download1.rpmfusion.org/free/el/rpmfusion-free-release-8.noarch.rpm
+
+  # Upgrade packages to most recent versions
+  dnf -y upgrade
+
+  # Install additional packages
+  dnf -y install patch python39-devel git wget cmake nano openblas-devel
+
+  # Make "python" and "pip" commands work
+  alternatives --set python /usr/bin/python3
+  alternatives --install /usr/bin/pip pip /usr/bin/pip3 1
+
+  echo "/usr/local/lib/python3.9/site-packages" > /usr/lib/python3.9/site-packages/usr-local.pth
+  echo "/usr/local/lib64/python3.9/site-packages" >> /usr/lib/python3.9/site-packages/usr-local.pth
+
+  # Install CUDA
+  cd /etc/yum.repos.d/
+  wget https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo
+  dnf -y install cuda-11-7
+
+  # Settings for compiling stuff with CUDA
+  export PATH=/usr/local/cuda/bin:$PATH
+  export CPATH=/usr/local/cuda/include:$CPATH
+
+  export LIBRARY_PATH=/usr/local/cuda/lib64:$LIBRARY_PATH
+  export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+  export CUDA_HOME="/usr/local/cuda"
+  export CUDA_INSTALL_ROOT="/usr/local/cuda"
+  export LIBRARY_PATH=$LIBRARY_PATH:/usr/local/cuda/lib64/stubs
+
+  # Test if CUDA is installed correctly
+  nvcc --version
+
+  # Get cuQuantum and cuTensor
+  wget https://developer.download.nvidia.com/compute/cuquantum/redist/cuquantum/linux-x86_64/cuquantum-linux-x86_64-23.03.0.20-archive.tar.xz
+  wget https://developer.download.nvidia.com/compute/cutensor/redist/libcutensor/linux-x86_64/libcutensor-linux-x86_64-1.7.0.1-archive.tar.xz
+
+  # Untar
+  tar xf cuquantum-linux-x86_64-23.03.0.20-archive.tar.xz
+  tar xf libcutensor-linux-x86_64-1.7.0.1-archive.tar.xz
+
+  # Make directory for cuquantum and cutensor under /usr/local/
+  mkdir /usr/local/cuquantum
+  mkdir /usr/local/cutensor
+  mv cuquantum-linux-x86_64-23.03.0.20-archive/* /usr/local/cuquantum
+  mv libcutensor-linux-x86_64-1.7.0.1-archive/* /usr/local/cutensor
+
+  # Add cuQuantum and cuTensor to Path
+  export LD_LIBRARY_PATH=/usr/local/cuquantum/lib/11:$LD_LIBRARY_PATH
+  export LD_LIBRARY_PATH=/usr/local/cutensor/lib/11:$LD_LIBRARY_PATH
+
+  export CPATH=/usr/local/cuquantum/include:$CPATH
+  export CPATH=/usr/local/cutensor/include:$CPATH
+
+  export PATH=/usr/local/cuquantum/lib/11:$PATH
+  export PATH=/usr/local/cutensor/lib/11:$PATH
+
+  export CUQUANTUM_ROOT="/usr/local/cuquantum"
+  export CUTENSOR_ROOT="/usr/local/cutensor"
+
+  # Start Qiskit-aer installation
+  cd /opt
+
+  # Install packages needed for qiskit
+  pip3 install "pybind11[global]"
+  pip3 install qiskit[visualization]
+  pip3 install -r requirements.txt
+
+  # Clone the repository
+  git clone https://github.com/Qiskit/qiskit-aer
+  cd qiskit-aer/
+
+  # Install the requirements from the repo
+  pip3 install -r requirements-dev.txt
+
+  # run the installation script
+  python ./setup.py bdist_wheel -- -DAER_THRUST_BACKEND=CUDA -DCUQUANTUM_ROOT=$CUQUANTUM_ROOT -DCUTENSOR_ROOT=$CUTENSOR_ROOT -DAER_ENABLE_CUQUANTUM=True --
+
+  # remove old qiskit-aer
+  pip3 uninstall -y qiskit-aer
+
+  # install wheel
+  pip3 install dist/*.whl
+
+  dnf clean all
+
+%environment
+  export CUQUANTUM_ROOT="/usr/local/cuquantum"
+  export CUTENSOR_ROOT="/usr/local/cutensor"
+
+  export PATH=/usr/local/cuda-11.7/bin:$PATH
+  export CPATH=/usr/local/cuda-11.7/include:$CPATH
+
+  export LIBRARY_PATH=/usr/local/cuda-11.7/lib64:$LIBRARY_PATH
+  export LD_LIBRARY_PATH=/usr/local/cuda-11.7/lib64:$LD_LIBRARY_PATH
+
+  export CUDA_HOME="/usr/local/cuda-11.7"
+
+  export LD_LIBRARY_PATH=/usr/local/cuquantum/lib/11:$LD_LIBRARY_PATH
+  export LD_LIBRARY_PATH=/usr/local/cutensor/lib/11:$LD_LIBRARY_PATH
+
+  export CPATH=/usr/local/cuquantum/include:$CPATH
+  export CPATH=/usr/local/cutensor/include:$CPATH
+
+  export PATH=/usr/local/cuquantum/lib/11:$PATH
+  export PATH=/usr/local/cutensor/lib/11:$PATH
