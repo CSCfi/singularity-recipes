@@ -1,0 +1,15 @@
+diff --git a/Makefile b/Makefile
+index 00f5869..86e724a 100644
+--- a/Makefile
++++ b/Makefile
+@@ -114,8 +114,8 @@ cuda118: $(BUILD_DIR) env
+ 	$(GPP) -std=c++14 -DBUILD_CUDA -shared -fPIC $(INCLUDE) $(BUILD_DIR)/ops.o $(BUILD_DIR)/kernels.o $(BUILD_DIR)/link.o $(FILES_CPP) -o ./bitsandbytes/libbitsandbytes_cuda$(CUDA_VERSION).so $(LIB)
+ 
+ hip: $(BUILD_DIR) env
+-	$(HIPCC) -std=c++14 -fPIC -c $(INCLUDE_ROCM) $(LIB_ROCM) $(CSRC)/ops.hip -o $(BUILD_DIR)/ops.o
+-	$(HIPCC) -std=c++14 -fPIC -c $(INCLUDE_ROCM) $(LIB_ROCM) $(CSRC)/kernels.hip -o $(BUILD_DIR)/kernels.o
++	$(HIPCC) -std=c++14 -fPIC --offload-arch=gfx90a -c $(INCLUDE_ROCM) $(LIB_ROCM) $(CSRC)/ops.hip -o $(BUILD_DIR)/ops.o
++	$(HIPCC) -std=c++14 -fPIC --offload-arch=gfx90a -c $(INCLUDE_ROCM) $(LIB_ROCM) $(CSRC)/kernels.hip -o $(BUILD_DIR)/kernels.o
+ 	$(GPP) -std=c++14 -D__HIP_PLATFORM_AMD__ -D__HIP_PLATFORM_HCC__ -DBUILD_HIP -shared -fPIC $(INCLUDE_ROCM) $(BUILD_DIR)/ops.o $(BUILD_DIR)/kernels.o $(FILES_CPP) -o ./bitsandbytes/libbitsandbytes_hip_nohipblaslt.so $(LIB_ROCM)
+ 
+ cuda12x: $(BUILD_DIR) env
