@@ -1,0 +1,2 @@
+#!/bin/bash
+tee /dev/dri/card* 2>&1<<<0 | grep I | cut -d ':' -f2 | tr -d ' ' | head -n1

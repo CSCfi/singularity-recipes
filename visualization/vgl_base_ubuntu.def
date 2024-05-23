@@ -1,0 +1,34 @@
+Bootstrap: docker
+From: ubuntu:22.04
+
+%runscript
+	export VGL_DISPLAY=$(getEglCard)
+	export DISPLAY=":$(getX11Display)"
+	if [[ ! -e $VGL_DISPLAY ]]; then
+		eglDebugInfo
+	else
+		vglrun $VGL_APPLICATION
+	fi
+%files
+	./getEglCard /usr/bin/getEglCard
+	./eglDebugInfo /usr/bin/eglDebugInfo
+	./getX11Display /usr/bin/getX11Display
+%post
+	chmod +x,o+r /usr/bin/getEglCard /usr/bin/eglDebugInfo /usr/bin/getX11Display
+	VGL_VERSION=3.1.1
+	apt-get update
+	apt-get install -y wget
+	apt-get install -y kmod
+	apt-get install -y libgl1
+	apt-get install -y xz-utils
+	wget -O virtualgl_${VGL_VERSION}_amd64.deb https://github.com/VirtualGL/virtualgl/releases/download/${VGL_VERSION}/virtualgl_${VGL_VERSION}_amd64.deb
+	apt-get install -y ./virtualgl_${VGL_VERSION}_amd64.deb
+	wget https://us.download.nvidia.com/tesla/535.161.07/NVIDIA-Linux-x86_64-535.161.07.run
+	sh NVIDIA-Linux-x86_64-535.161.07.run -a -N --ui=none --no-kernel-module --no-x-check --skip-depmod --no-nvidia-modprobe
+	vglserver_config +s +f +t +glx
+
+	# Cleanup
+	rm NVIDIA-Linux-x86_64-535.161.07.run
+	rm virtualgl_${VGL_VERSION}_amd64.deb
+
+	cd /opt
