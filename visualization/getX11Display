@@ -1,0 +1,2 @@
+#!/bin/bash
+echo $(ls -l /tmp/.X11-unix/ | grep $USER | head -n1 | awk '{print $9}' | sed 's/X//g'  ).0

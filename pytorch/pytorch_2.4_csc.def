@@ -1,0 +1,234 @@
+Bootstrap: docker
+From: rockylinux:8.9
+
+%labels
+  Author Mats Sjöberg <mats.sjoberg@csc.fi>
+
+%files
+  requirements_pytorch_2.4.txt /opt/requirements.txt
+
+%post
+  PYVER=python3.11
+  
+  # Use all available cores for compilation
+  export MAKEFLAGS="-j$(nproc)"
+
+  # Enable powertools
+  dnf install -y dnf-plugins-core
+  dnf config-manager --set-enabled powertools
+
+  # Enable extra repositories
+  dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+  dnf install -y https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-8.noarch.rpm
+
+  # Upgrade packages to most recent versions
+  dnf -y upgrade
+
+  # Install additional packages
+  dnf -y install which patch ${PYVER}-devel ${PYVER}-pip git wget libsndfile \
+      ncurses-devel turbojpeg turbojpeg-devel libxkbcommon-x11 \
+      openblas-devel ffmpeg libxml2-devel libxslt-devel unzip \
+      bzip2-devel graphviz sqlite-devel
+
+  # Install newer gcc
+  dnf -y install gcc-toolset-12
+  source /opt/rh/gcc-toolset-12/enable
+
+  ## NOTE: lots of compilations below don't seem to support gcc 13
+  ## yet, so sticking with 12 for now
+  # dnf -y install gcc-toolset-13   
+  # source /opt/rh/gcc-toolset-13/enable
+
+  # We need newer nodejs
+  # dnf module -y install nodejs:14/common
+  # dnf module -y install nodejs:18/common
+  dnf module -y install nodejs:20/common
+
+  # Make "python" and "pip" commands work
+  alternatives --set python /usr/bin/python3
+  alternatives --install /usr/bin/pip pip /usr/bin/pip3 1
+
+  # # Upgrade pip
+  # pip install --upgrade pip  # is this OK??
+
+  echo "/usr/local/lib/${PYVER}/site-packages" > /usr/lib/${PYVER}/site-packages/usr-local.pth
+  echo "/usr/local/lib64/${PYVER}/site-packages" >> /usr/lib/${PYVER}/site-packages/usr-local.pth
+
+  # # Install newer cmake (needed by faiss)
+  # dnf -y install  openssl-devel
+  # cd /opt
+  # CMAKE_VER=3.27.7
+  # wget https://github.com/Kitware/CMake/releases/download/v${CMAKE_VER}/cmake-${CMAKE_VER}.tar.gz
+  # tar xf cmake-${CMAKE_VER}.tar.gz
+  # cd cmake-${CMAKE_VER}
+  # ./bootstrap && make && make install
+  # cd
+  # rm -rf /opt/cmake-${CMAKE_VER}.tar.gz /opt/cmake-${CMAKE_VER}
+  dnf -y install cmake
+  
+  # For PyDreamer and MineRT
+  dnf install -y mesa-libGLU mesa-dri-drivers xrandr glx-utils xterm java-1.8.0-openjdk-headless xorg-x11-server-Xvfb
+  pip install pyglet==1.5.15
+
+  # Install Mellanox stuff and OpenMPI
+  wget https://www.mellanox.com/downloads/ofed/RPM-GPG-KEY-Mellanox
+  rpm --import RPM-GPG-KEY-Mellanox
+  rm RPM-GPG-KEY-Mellanox
+
+  cd /etc/yum.repos.d/
+  # MOFED
+  # mahti 14.8.2024: mlnx-ofa_kernel-5.8-OFED.5.8.4.1.5.1.rhel8u6.x86_64
+  wget https://linux.mellanox.com/public/repo/mlnx_ofed/5.5-1.0.3.2/rhel8.5/mellanox_mlnx_ofed.repo
+  #wget https://linux.mellanox.com/public/repo/mlnx_ofed/5.8-4.1.5.0/rhel8.5/mellanox_mlnx_ofed.repo
+
+  openmpi_package=`dnf --repo mlnx_ofed* whatprovides openmpi | grep -B 1 mlnx_ofed | grep -v Repo |  awk '{print $1;}' | sort | tail -n 1`
+  rdmacore_package=`dnf --repo mlnx_ofed* whatprovides rdma-core | grep -B 1 mlnx_ofed | grep -v Repo |  awk '{print $1;}' | sort | tail -n 1`
+  ucxib_package=`dnf --repo mlnx_ofed* whatprovides ucx-ib | grep -B 1 mlnx_ofed | grep -v Repo |  awk '{print $1;}' | sort | tail -n 1`
+  dnf -y install $openmpi_package $rdmacore_package $ucxib_package
+
+  # Install CUDA, CUDNN, NCCL
+  # cd /etc/yum.repos.d/
+  # wget https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo
+  dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo
+
+  
+  #dnf -y install cuda-toolkit-12-4
+  dnf -y module install nvidia-driver:latest-dkms
+  dnf -y install cuda-12-4 libnccl libnccl-devel libnccl-static libcudnn9-cuda-12 libcudnn9-devel-cuda-12
+
+  # Settings for compiling stuff with MPI and CUDA
+  export OMPI_DIR=$(ls -1d /usr/mpi/gcc/openmpi-4.* | head -n1)
+  export PATH=$OMPI_DIR/bin:$PATH
+  export LD_LIBRARY_PATH=$OMPI_DIR/lib64:$LD_LIBRARY_PATH
+  export PATH=/usr/local/cuda/bin:$PATH
+
+  # Install Python packages, including PyTorch
+  # NOTE: torchtext removed 16.8.2024 as it is no longer supported in PyTorch 2.4
+  pip3 install wheel
+  pip3 install torch torchvision torchaudio \
+       --extra-index-url https://download.pytorch.org/whl/cu124 \
+       -r /opt/requirements.txt
+
+  # Install apex, as some legacy code still uses it
+  export MAX_JOBS="$(nproc)"
+  pip install --upgrade setuptools   # maybe fixes issue where it is just installing Python part of apex, not compiling the C parts
+
+  cd /opt
+  git clone https://github.com/NVIDIA/apex
+  cd apex
+  pip install -v --disable-pip-version-check --no-cache-dir --no-build-isolation --config-settings "--build-option=--cpp_ext" --config-settings "--build-option=--cuda_ext" ./
+  cd
+  rm -rf /opt/apex
+  
+  #pip install xformers --index-url https://download.pytorch.org/whl/cu121
+  pip install -v -U git+https://github.com/facebookresearch/xformers.git@main#egg=xformers
+
+  # STATUS: 26.2.2024, 6.6.2024: pyg_lib giving GLIBC problem
+  # We need to compile pyg_lib due to GLIBC problem with rockylinux:8.8 and 8.9 at least
+  TORCH_CUDA_ARCH_LIST="7.0;8.0" pip install git+https://github.com/pyg-team/pyg-lib.git
+  pip install torch_scatter torch_sparse torch_cluster torch_spline_conv \
+      -f https://data.pyg.org/whl/torch-2.4.0+cu124.html
+
+  /usr/local/bin/jupyter lab build
+
+  # Install recent Vim with Python-support
+  # It has to be done like this as default vim-enhanced is compiled
+  # against python3.6 version
+
+  # #VIMVER="9.0.2081"
+  # #VIMVER="9.1.0442"
+  VIMVER="9.1.0675"
+  cd /opt/
+  wget https://github.com/vim/vim/archive/refs/tags/v${VIMVER}.tar.gz
+  tar xf v${VIMVER}.tar.gz
+  cd vim-${VIMVER}
+  ./configure --enable-python3interp=yes --prefix=/opt/vim --enable-fail-if-missing
+  make && make install
+  cd
+  rm -rf /opt/vim-${VIMVER} /opt/v${VIMVER}.tar.gz
+
+  # Install OpenCV >= 4
+  cd /opt/
+  #OPENCV_VER=4.8.1
+  #OPENCV_VER=4.9.0
+  OPENCV_VER=4.10.0
+  wget https://github.com/opencv/opencv/archive/${OPENCV_VER}.zip
+  unzip ${OPENCV_VER}.zip
+  cd opencv-${OPENCV_VER}
+  mkdir build; cd build
+  cmake -DOPENCV_GENERATE_PKGCONFIG=ON ..
+  #cmake --build .
+  make
+  make install
+  cd
+  rm -rf /opt/${OPENCV_VER}.zip /opt/opencv-${OPENCV_VER}
+  export LD_LIBRARY_PATH=/usr/local/lib64:$LD_LIBRARY_PATH
+
+  # Install faiss
+  dnf -y install swig
+
+  FAISS_VER=v1.7.4
+  #FAISS_VER=v1.8.0
+  cd /opt
+  git clone --branch $FAISS_VER https://github.com/facebookresearch/faiss
+
+  cd faiss
+  cmake -B build . -DFAISS_ENABLE_GPU=ON -DFAISS_ENABLE_PYTHON=ON -DCMAKE_CUDA_ARCHITECTURES="70;80"
+  make -C build -j5 faiss
+
+  sed -ie 's/-doxygen//' build/faiss/python/CMakeFiles/swigfaiss_swig_compilation.dir/build.make
+  make -C build -j5 swigfaiss
+  cd build/faiss/python
+  python setup.py install
+  
+  cd /opt/faiss
+  make -C build install
+  cd /opt
+  rm -rf faiss
+
+  echo /usr/local/lib/${PYVER}/site-packages/faiss-*.egg >> /usr/lib/${PYVER}/site-packages/usr-local.pth
+
+  # Install ffcv
+  export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/lib64/pkgconfig
+
+  pip3 install ffcv  # needs opencv install (above)
+
+  # Install DeepSpeed
+  dnf -y install libaio-devel
+
+  pip install deepspeed-kernels
+  TORCH_CUDA_ARCH_LIST="7.0;8.0" DS_BUILD_OPS=1 \
+                      DS_BUILD_EVOFORMER_ATTN=0 DS_BUILD_SPARSE_ATTN=0 DS_BUILD_CCL_COMM=0 \
+                      pip3 install deepspeed --no-cache-dir
+  sed -i 's/hostname -I/hostname -s/g' /usr/local/lib64/${PYVER}/site-packages/deepspeed/comm/comm.py
+
+  # Install pytorch3d and open3d
+  TORCH_CUDA_ARCH_LIST="7.0;8.0" FORCE_CUDA=1 \
+                      pip install \
+                      "git+https://github.com/facebookresearch/pytorch3d.git"
+  pip install open3d
+
+  # Install Horovod
+  # HOROVOD_BUILD_CUDA_CC_LIST=70,80 HOROVOD_WITH_PYTORCH=1 HOROVOD_WITHOUT_TENSORFLOW=1 HOROVOD_WITHOUT_MXNET=1 \
+  #                     HOROVOD_WITH_MPI=1 HOROVOD_WITHOUT_GLOO=1 HOROVOD_GPU_OPERATIONS=NCCL HOROVOD_NCCL_LINK=SHARED \
+  #                     pip3 install -v horovod
+
+  # TODO FIXME
+  # STATIC_DIR=$(python3 -c 'from mlflow.server import app;print(app.static_folder)')
+  # MAIN_FN=$(ls -1 $STATIC_DIR/static/css/main.*.css)
+  # sed -i.bak 's|/static-files/static|..|g' $MAIN_FN
+
+  # https://github.com/huggingface/transformers/issues/29155
+  # pip install pytest==7.4.4
+  # pip install notebook
+
+  dnf clean all
+
+
+%environment
+  source /opt/rh/gcc-toolset-12/enable
+
+  export OMPI_DIR=$(ls -1d /usr/mpi/gcc/openmpi-4.* | head -n1)
+  export PATH=/usr/local/cuda/bin:$OMPI_DIR/bin:/opt/vim/bin:$PATH
+  export LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/local/lib64:$OMPI_DIR/lib64:$LD_LIBRARY_PATH
+  export KERAS_BACKEND="torch"

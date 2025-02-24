@@ -1,0 +1,163 @@
+Bootstrap: docker
+From: rocm/dev-ubuntu-22.04:6.1.2-complete
+
+%labels
+  Author Mats Sjöberg <mats.sjoberg@csc.fi>
+
+%files
+  requirements_pytorch_2.4_lumi.txt /opt/requirements.txt
+
+%post
+  # Use all available cores for compilation
+  export MAKEFLAGS="-j$(nproc)"
+
+  # Some useful environment variables
+  export DEBIAN_FRONTEND=noninteractive
+  export LC_ALL=C
+
+  # To get newer nodejs, we need to use nodesource.com packages
+  curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+  NODE_MAJOR=20
+  echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
+ 
+  # Update packages
+  apt update
+  apt upgrade -y
+
+  apt install -y cmake python-is-python3 git autoconf python3-dev wget git vim \
+      libtool openjdk-8-jdk-headless xvfb python3-opengl libaio-dev \
+      libxslt1-dev libxml2-dev imagemagick libsndfile1 graphviz \
+      libturbojpeg0-dev libxkbcommon-x11-0 libopenblas-dev libsqlite3-dev \
+      ffmpeg unzip libbz2-dev python3-venv locales
+
+  locale-gen en_US.UTF-8
+
+  apt install -y rocm-libs rccl
+
+  # Nodejs required for JupyterLab stuff
+  # apt install -y nodejs npm
+  # Ubuntu's nodejs is too old
+  apt install -y nodejs=20.17.0-1nodesource1
+  
+  # Fix for Java trying to find assistive techs in headless java
+  # https://askubuntu.com/questions/695560/assistive-technology-not-found-awterror
+  sed -i -e '/^assistive_technologies=/s/^/#/' /etc/java-8-openjdk/accessibility.properties
+
+  # Install MPICH
+  MPICH_VERSION="3.1.4"
+  cd /opt
+  wget https://www.mpich.org/static/downloads/${MPICH_VERSION}/mpich-${MPICH_VERSION}.tar.gz
+  tar xf mpich-${MPICH_VERSION}.tar.gz
+  rm mpich-${MPICH_VERSION}.tar.gz
+  cd mpich-${MPICH_VERSION}
+
+  ./configure --disable-fortran --enable-fast=all,O3 --prefix=/usr
+  make -j install
+  ldconfig
+  cd /opt
+  rm -rf mpich-3.1.4
+
+  # Install aws-ofi-rccl
+  apt install -y libfabric-dev
+
+  cd /opt
+  git clone https://github.com/ROCmSoftwarePlatform/aws-ofi-rccl
+  cd aws-ofi-rccl
+  ./autogen.sh
+  ./configure
+  make -j && make install
+  export LD_LIBRARY_PATH=/usr/local/lib:/opt/rocm/lib/:$LD_LIBRARY_PATH  
+  cd /opt
+  rm -rf aws-ofi-rccl
+
+  pip install --upgrade pip
+
+  # Install PyTorch and various Python packages
+  pip3 install --no-cache-dir torch torchvision torchaudio \
+       --extra-index-url https://download.pytorch.org/whl/rocm6.1 \
+       -r /opt/requirements.txt
+  
+  # Build Jupyter lab stuff
+  /usr/local/bin/jupyter lab build
+
+  # Install DeepSpeed
+  pip3 install mpi4py ninja
+
+
+  # Install oneCCL
+  cd /opt/
+  git clone https://github.com/oneapi-src/oneCCL -b 2021.13.1
+  cd oneCCL
+  mkdir build
+  cd build
+  cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local
+  make -j install
+  cd /opt
+  rm -rf oneCCL
+
+  # We're now relying on JIT working on LUMI as pre-compiling ops doesn't seem to be an option anymore
+  export PYTORCH_ROCM_ARCH=gfx90a
+  DS_ACCELERATOR=cuda pip install deepspeed --global-option="build_ext" --global-option="-j8" -v --no-cache-dir
+  
+  # Ugly hack: this is for making sure deepspeed gets the hostname and
+  # not the IP (which happens to use wrong network interface on LUMI)
+  sed -i.bak 's/hostname -I/hostname -s/g' /usr/local/lib/python3.10/dist-packages/deepspeed/comm/comm.py
+
+  # xformers for AMD
+  cd /opt
+  git clone --recursive https://github.com/ROCm/xformers/ -b develop
+  cd xformers
+  pip install .
+  cd /opt
+  rm -rf xformers
+
+  cd /opt
+  git clone --recursive https://github.com/ROCmSoftwarePlatform/flash-attention.git
+  cd flash-attention/
+  export GPU_ARCHS="gfx90a"
+  export MAX_JOBS=$(nproc)
+  pip install . -v
+  cd /opt
+  rm -rf flash-attention/
+
+  # vLLM https://docs.vllm.ai/en/latest/getting_started/amd-installation.html
+  export PYTORCH_ROCM_ARCH=gfx90a
+  cd /opt
+  git clone https://github.com/vllm-project/vllm
+  cd vllm
+  pip install -U -r requirements-rocm.txt
+  python setup.py install
+  cd /opt
+  rm -rf vllm
+
+  cd /opt
+  git clone --recurse https://github.com/ROCm/bitsandbytes
+  cd bitsandbytes
+  git checkout rocm_enabled
+  #pip install -r requirements-dev.txt
+  pip install einops lion-pytorch
+  cmake -DCOMPUTE_BACKEND=hip -DBNB_ROCM_ARCH=gfx90a -S .
+  make -j
+  pip install .
+  cd /opt
+  rm -rf bitsandbytes
+
+  cd /opt
+  git clone https://github.com/ROCm/apex
+  cd apex
+  # for some reason the "official command" doesn't install extensions even though it should
+  # pip install -v --disable-pip-version-check --no-cache-dir --no-build-isolation --config-settings "--build-option=--cpp_ext" --config-settings "--build-option=--cuda_ext" ./
+  pip install -r requirements.txt
+  python3 setup.py install -v --cpp_ext --cuda_ext
+  cd /opt
+  rm -rf apex
+  
+  apt clean
+
+
+%environment
+  export LC_ALL=C
+  export LD_LIBRARY_PATH=/usr/local/lib:/opt/rocm/lib/:$LD_LIBRARY_PATH
+  export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+  export PYTORCH_ROCM_ARCH=gfx90a
+  export KERAS_BACKEND="torch"

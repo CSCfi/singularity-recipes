@@ -1,0 +1,14 @@
+#!/bin/bash
+echo "Internal error, failed to get GPU card for EGL"
+echo "HOST: $(hostname)"
+echo "NVIDIA SMI: $(nvidia-smi)"
+echo "Container: $SINGULARITY_CONTAINER"
+echo "JobId: $SLURM_JOB_ID"
+echo -e "SLURM_STEP_GPUS:$SLURM_STEP_GPUS\nSLURM_GPUS_ON_NODE:$SLURM_GPUS_ON_NODE\nGPU_DEVICE_ORDINAL:$GPU_DEVICE_ORDINAL"
+echo "================ /dev/dri/ Permissions ================"
+ls -la /dev/dri/
+echo "================ /dev/dri Device test ================="
+tee /dev/dri/card* 2>&1<<<0
+echo "================ Container recipe ====================="
+cat /.singularity.d/Singularity
+echo "======================================================="

@@ -1,0 +1,199 @@
+Bootstrap: docker
+From: rocm/dev-ubuntu-22.04:5.6-complete
+
+%labels
+  Author Mats Sjöberg <mats.sjoberg@csc.fi>
+
+%files
+  requirements_pytorch_2.2.0.txt /opt/requirements.txt
+  bitsandbytes_lumi_pytorch_2.2.0.patch /opt/bitsandbytes_lumi.patch
+
+%post
+  # Use all available cores for compilation
+  export MAKEFLAGS="-j$(nproc)"
+
+  # Some useful environment variables
+  export DEBIAN_FRONTEND=noninteractive
+  export LC_ALL=C
+
+  # To get newer nodejs, we need to use nodesource.com packages
+  curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+  NODE_MAJOR=18
+  echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
+ 
+  # Update packages
+  apt update
+  apt upgrade -y
+
+  apt install -y cmake python-is-python3 git autoconf python3-dev wget git vim \
+      libtool openjdk-8-jdk-headless xvfb python3-opengl libaio-dev \
+      libxslt1-dev libxml2-dev imagemagick libsndfile1 graphviz \
+      libturbojpeg0-dev libxkbcommon-x11-0 libopenblas-dev \
+      ffmpeg unzip libbz2-dev python3-venv
+
+  # TODO, still missing compared to Puhti recipe:
+  # - ffcv and OpenCV
+  # - PyTorch geometric
+
+  apt install -y rocm-libs rccl
+
+  # Nodejs required for JupyterLab stuff
+  # apt install -y nodejs npm
+  # Ubuntu's nodejs is too old
+  apt install -y nodejs=18.18.2-1nodesource1
+  
+  # Fix for Java trying to find assistive techs in headless java
+  # https://askubuntu.com/questions/695560/assistive-technology-not-found-awterror
+  sed -i -e '/^assistive_technologies=/s/^/#/' /etc/java-8-openjdk/accessibility.properties
+
+  # Install MPICH
+  MPICH_VERSION="3.1.4"
+  cd /opt
+  wget https://www.mpich.org/static/downloads/${MPICH_VERSION}/mpich-${MPICH_VERSION}.tar.gz
+  tar xf mpich-${MPICH_VERSION}.tar.gz
+  rm mpich-${MPICH_VERSION}.tar.gz
+  cd mpich-${MPICH_VERSION}
+
+  ./configure --disable-fortran --enable-fast=all,O3 --prefix=/usr
+  make -j install
+  ldconfig
+  cd /opt
+  rm -rf mpich-3.1.4
+
+  # Install aws-ofi-rccl
+  apt install -y libfabric-dev
+
+  cd /opt
+  git clone https://github.com/ROCmSoftwarePlatform/aws-ofi-rccl
+  cd aws-ofi-rccl
+  ./autogen.sh
+  ./configure
+  make -j && make install
+  export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+  cd /opt
+  rm -rf aws-ofi-rccl
+
+  # Install PyTorch and various Python packages
+  pip3 install --no-cache-dir torch torchvision torchaudio torchtext \
+       --extra-index-url https://download.pytorch.org/whl/rocm5.6 \
+       -r /opt/requirements.txt
+  
+  # Build Jupyter lab stuff
+  /usr/local/bin/jupyter lab build
+
+  # Install DeepSpeed
+  pip3 install mpi4py ninja
+
+  # For an (incomplete) list of all ops, see:
+  # https://www.deepspeed.ai/tutorials/advanced-install/#pre-install-deepspeed-ops
+  # missing dskernels: https://github.com/microsoft/DeepSpeed/issues/4669
+  export PYTORCH_ROCM_ARCH=gfx90a
+  DS_BUILD_OPS=1 \
+              DS_BUILD_AIO=0 \
+              DS_BUILD_CCL_COMM=1 \
+              DS_BUILD_CPU_ADAM=1 \
+              DS_BUILD_CPU_LION=1 \
+              DS_BUILD_EVOFORMER_ATTN=0 \
+              DS_BUILD_FUSED_ADAM=1 \
+              DS_BUILD_FUSED_LION=1 \
+              DS_BUILD_CPU_ADAGRAD=1 \
+              DS_BUILD_FUSED_LAMB=0 \
+              DS_BUILD_QUANTIZER=0 \
+              DS_BUILD_RANDOM_LTD=0 \
+              DS_BUILD_SPARSE_ATTN=0 \
+              DS_BUILD_TRANSFORMER=0 \
+              DS_BUILD_TRANSFORMER_INFERENCE=0 \
+              DS_BUILD_STOCHASTIC_TRANSFORMER=0 \
+              DS_BUILD_CUTLASS_OPS=0 \
+              DS_BUILD_RAGGED_DEVICE_OPS=0 \
+              DS_BUILD_INFERENCE_CORE_OPS=0 \
+              DS_BUILD_RAGGED_OPS=1 \
+              DS_BUILD_SPATIAL_INFERENCE=1 \
+              pip install deepspeed \
+              --global-option="build_ext" --global-option="-j8" -v --no-cache-dir
+
+  # Ugly hack: this is for making sure deepspeed gets the hostname and
+  # not the IP (which happens to use wrong network interface on LUMI)
+  sed -i.bak 's/hostname -I/hostname -s/g' /usr/local/lib/python3.10/dist-packages/deepspeed/comm/comm.py
+
+  # FIXME: no longer needed? need to test
+  # STATIC_DIR=$(python3 -c 'from mlflow.server import app;print(app.static_folder)')
+  # MAIN_FN=$(ls -1 $STATIC_DIR/static/css/main.*.css) 
+  # sed -i.bak 's|/static-files/static|..|g' $MAIN_FN
+
+  # Something has added triton, even though we should have only pytorch-triton-rocm
+  pip uninstall -y triton
+
+  # xformers for AMD
+  cd /opt
+  git clone --recursive https://github.com/ROCm/xformers/ -b dev_upstream
+  cd xformers
+  pip install .
+  cd /opt
+  rm -rf xformers
+
+  ## FlashAttention-2 (might not be needed in the future if can use
+  ## PyTorch's internal implementation), see:
+  ## https://huggingface.co/docs/transformers/perf_infer_gpu_one?install=AMD#flashattention-2
+  ## https://github.com/huggingface/optimum-amd/blob/main/docker/transformers-pytorch-amd-gpu-flash/Dockerfile
+  
+  cd /opt
+  git clone --recursive https://github.com/ROCmSoftwarePlatform/flash-attention.git
+  cd flash-attention/
+  export GPU_ARCHS="gfx90a"
+  # Patch not needed for PyTorch 2.1+
+  #PYTHON_SITE_PACKAGES=$(python -c 'import site; print(site.getsitepackages()[0])')
+  #patch "${PYTHON_SITE_PACKAGES}/torch/utils/hipify/hipify_python.py" hipify_patch.patch
+  pip install .
+  cd /opt
+  rm -rf flash-attention/
+
+  ## vLLM https://docs.vllm.ai/en/latest/getting_started/amd-installation.html
+  ## export PYTORCH_ROCM_ARCH=gfx90a
+  ## cd /opt
+  ## git clone https://github.com/vllm-project/vllm
+  ## cd vllm
+  ## pip install xformers==0.0.23 --no-deps
+  ## bash patch_xformers.rocm.sh
+  ## pip install -U -r requirements-rocm.txt
+  ## #patch /opt/rocm/include/hip/amd_detail/amd_hip_bf16.h rocm_patch/rocm_bf16.patch
+  ## python setup.py install
+  ## cd /opt
+  ## rm -rf vllm
+
+  # Bitsand bytes for AMD: https://github.com/ROCm/bitsandbytes/tree/rocm_enabled
+  # requires hipBLASLt
+  cd /opt
+  git clone --recurse https://github.com/ROCmSoftwarePlatform/hipBLASLt
+  cd hipBLASLt
+  git checkout 4b3b34405e7e25cff404f69bfd0a832644430477
+  #git checkout develop
+  ./install.sh -idc
+  cd /opt
+  rm -rf hipBLASLt
+ 
+  cd /opt
+  pip install einops lion_pytorch
+
+  git clone --recurse https://github.com/ROCmSoftwarePlatform/bitsandbytes
+  cd bitsandbytes
+  #git checkout rocm_enabled
+  git checkout 48b7fa9
+  git apply /opt/bitsandbytes_lumi.patch
+  make hip
+  python setup.py install
+  cd /opt
+  rm -rf bitsandbytes hipBLASLt
+
+  # https://github.com/huggingface/transformers/issues/29155
+  pip install pytest==7.4.4
+
+  apt clean
+
+
+%environment
+  export LC_ALL=C
+  export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+  export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+  export PYTORCH_ROCM_ARCH=gfx90a
+  export KERAS_BACKEND="torch"
