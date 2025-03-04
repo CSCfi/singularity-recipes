@@ -14,13 +14,12 @@ From: ubuntu:24.04
     apt-get -y install --fix-missing wget zip
 
     # Add missing geotiff and png libraries
-    apt-get install -y libgeotiff-dev libpng-dev
+    apt-get install -y libgeotiff-dev libpng-dev libjpeg62
     # Two different version are for some strange reason needed,
     # Add symlinks for older versions
-    cd /lib/x86_64-linux-gnu/
+    # cd /lib/x86_64-linux-gnu/
     #ln -s libpng16.so.16 libpng14.so.14
     #ln -s libgeotiff.so.5 libgeotiff.so.2
-	ln -s libjpeg.so.62 libjpeg.so.8
 	
 	# Download and unzip the Linux version of Lastools
     mkdir -p /opt/LAStools/serf/geo
