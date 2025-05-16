@@ -1,0 +1,124 @@
+Bootstrap: docker
+From: rocm/dev-ubuntu-22.04:6.2.4-complete
+
+%labels
+  Author Mats Sjöberg <mats.sjoberg@csc.fi>
+
+%post
+  # Use all available cores for compilation
+  export MAKEFLAGS="-j$(nproc)"
+
+  # Some useful environment variables
+  export DEBIAN_FRONTEND=noninteractive
+  export LC_ALL=C
+
+  # Update packages
+  apt update
+  apt upgrade -y
+
+  apt install -y cmake python-is-python3 git autoconf python3-dev wget git vim \
+       libtool unzip libbz2-dev python3-venv locales
+
+  locale-gen en_US.UTF-8
+
+  apt install -y rocm-libs rccl
+
+  # Install CXI, based on
+  # https://github.com/DeiC-HPC/BitBulldozersLab/blob/explore/docker_builds/docker_builds/common_docker_defs/Dockerfile.install_cxi
+  apt install -y pkg-config libconfig-dev libuv1-dev libfuse-dev libyaml-dev \
+      libnl-3-dev libsensors-dev
+
+  cd /opt/
+  git clone https://github.com/HewlettPackard/shs-cassini-headers
+  mkdir -p /usr/local/share/cassini-headers/
+  mkdir -p /usr/local/include
+  cp shs-cassini-headers/share/cassini-headers/csr_defs.json /usr/local/share/cassini-headers/
+  cp -r shs-cassini-headers/include/* /usr/local/include/
+
+  cd /opt/
+  git clone https://github.com/HewlettPackard/shs-cxi-driver
+  cp -r shs-cxi-driver/include/* /usr/local/include/
+
+  LIBCXI_PATH=/opt/libcxi
+  cd /opt/
+  git clone http://github.com/HewlettPackard/shs-libcxi
+  cd shs-libcxi
+  git checkout 0f3609b5e224636abffc7ceffe6f4e9c83244c08
+  sed -i 's+/usr/share/cassini-headers/csr_defs.json+/usr/local/share/cassini-headers/csr_defs.json+g' utils/cxi_dump_csrs.py
+  ./autogen.sh
+  ./configure --disable-static --with-udevrulesdir=$LIBCXI_PATH/lib/udev/rules.d --prefix=$LIBCXI_PATH CFLAGS='-I /usr/local/include' --with-rocm=/opt/rocm
+  make -j install
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$LIBCXI_PATH/lib
+
+  cd /opt
+  rm -rf shs-cassini-headers shs-cxi-driver shs-libcxi
+  
+  # Install libfabric, based on
+  # https://github.com/DeiC-HPC/BitBulldozersLab/blob/explore/docker_builds/docker_builds/common_docker_defs/Dockerfile.install_libfabric_cxi
+
+  LIBFABRIC_PATH=/opt/libfabric
+  LIBFABRIC_VERSION=1.22.0
+
+  apt install -y libjson-c-dev libcurl4-openssl-dev
+
+  cd /opt
+  wget https://github.com/ofiwg/libfabric/releases/download/v$LIBFABRIC_VERSION/libfabric-$LIBFABRIC_VERSION.tar.bz2
+  tar xf libfabric-$LIBFABRIC_VERSION.tar.bz2
+  rm libfabric-$LIBFABRIC_VERSION.tar.bz2
+  cd libfabric-$LIBFABRIC_VERSION
+  # sed is needed to delete the CXI_MAP_IOVA_ALLOC as it was removed. https://github.com/search?q=repo%3AHewlettPackard%2Fshs-libcxi+CXI_MAP_IOVA_ALLOC&type=commits
+  sed -i 's/| CXI_MAP_IOVA_ALLOC//g' prov/cxi/include/cxip.h
+  ./configure --enable-cxi=$LIBCXI_PATH --prefix=$LIBFABRIC_PATH CFLAGS='-I /usr/local/include' --with-rocr=/opt/rocm --enable-rocr-dlopen
+  make -j install
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$LIBFABRIC_PATH/lib
+
+  cd /opt
+  rm -rf libfabric-$LIBFABRIC_VERSION
+
+  ## Install MPICH, based on
+  ## https://github.com/DeiC-HPC/BitBulldozersLab/tree/explore/docker_builds/docker_builds
+  # MPICH_VERSION=4.2.3
+  # MPICH_PATH=/opt/mpich
+  # MPICH_TAR=http://www.mpich.org/static/downloads/${MPICH_VERSION}/mpich-${MPICH_VERSION}.tar.gz
+
+  # cd /opt
+  # wget $MPICH_TAR
+  # tar xf mpich-$MPICH_VERSION.tar.gz
+  # rm mpich-$MPICH_VERSION.tar.gz
+  # cd mpich-$MPICH_VERSION
+  # ##--with-device=ch4:ofi
+  # ./configure --with-libfabric=/opt/libfabric \
+  #             --disable-fortran \
+  #             --without-ucx \
+  #             --prefix=/usr
+  # make -j install
+  # ldconfig
+  # cd /opt
+  # rm -rf mpich-$MPICH_VERSION
+
+
+  # Install aws-ofi-rccl
+  export RCCL_DEBUG=0
+  cd /opt
+  git clone https://github.com/ROCmSoftwarePlatform/aws-ofi-rccl
+  cd aws-ofi-rccl
+
+  export CPATH=$LIBFABRIC_PATH/include
+  export LIBRARY_PATH=$LD_LIBRARY_PATH
+  ./autogen.sh
+  ./configure --with-libfabric=$LIBFABRIC_PATH --enable-trace --disable-tests
+  make -j && make install
+  export LD_LIBRARY_PATH=/usr/local/lib:/opt/rocm/lib/:$LD_LIBRARY_PATH  
+  cd /opt
+  rm -rf aws-ofi-rccl
+
+  pip install --upgrade pip
+  
+  # Install PyTorch
+  pip3 install --no-cache-dir torch torchvision \
+       --extra-index-url https://download.pytorch.org/whl/rocm6.2.4 \
+
+%environment
+  export LC_ALL=C
+  export LD_LIBRARY_PATH=/usr/local/lib:/opt/rocm/lib/:/opt/libcxi/lib:/opt/libfabric/lib:$LD_LIBRARY_PATH
+  export PYTORCH_ROCM_ARCH=gfx90a
