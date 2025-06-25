@@ -3,12 +3,9 @@ From: rockylinux/rockylinux:8.9
 
 %post
     dnf -y install epel-release
-    dnf -y install wget
-    wget "https://macaulay2.com/Downloads/Common/Macaulay2-1.24.11-1.common.rpm" --output-document /opt/macaulay2-common.rpm
-    wget "https://macaulay2.com/Downloads/GNU-Linux/Red%20Hat%20Enterprise,%20CentOS,%20Scientific%20Linux/Macaulay2-1.24.11-1.x86_64-Linux-RockyLinux-8.9.rpm" --output-document /opt/macaulay2.rpm
-    dnf -y install /opt/macaulay2-common.rpm /opt/macaulay2.rpm
+    dnf -y install "https://macaulay2.com/Downloads/Common/Macaulay2-1.24.11-1.common.rpm"
+    dnf -y install "https://macaulay2.com/Downloads/GNU-Linux/Red%20Hat%20Enterprise,%20CentOS,%20Scientific%20Linux/Macaulay2-1.24.11-1.x86_64-Linux-RockyLinux-8.9.rpm"
     dnf clean all
-    rm -f /opt/macaulay2-common.rpm /opt/macaulay2.rpm
 
 %runscript
     M2 "$@"
