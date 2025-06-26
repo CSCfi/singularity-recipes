@@ -5,6 +5,7 @@ From: matlab.sif
     MATLAB_PROXY_VERSION=0.23.1
 
 %post
+    dnf update -y
     dnf install -y python39 python39-pip xorg-x11-server-Xvfb.x86_64
     dnf clean all -y
     python3 -m venv /opt/venv
