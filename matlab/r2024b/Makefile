@@ -1,9 +1,10 @@
 TMPDIR ?= /tmp
+PREFIX := $(PWD)
 
-MATLAB_SIF := matlab.sif
+MATLAB_SIF := $(PREFIX)/matlab.sif
 MATLAB_DEF := matlab.def
 
-MATLAB_PROXY_SIF := matlab-proxy.sif
+MATLAB_PROXY_SIF := $(PREFIX)/matlab-proxy.sif
 MATLAB_PROXY_DEF := matlab-proxy.def
 
 .PHONY: all
