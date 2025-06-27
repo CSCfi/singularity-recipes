@@ -1,5 +1,5 @@
 TMPDIR ?= /tmp
-PREFIX := $(PWD)
+PREFIX := .
 
 MATLAB_SIF := $(PREFIX)/matlab.sif
 MATLAB_DEF := matlab.def
