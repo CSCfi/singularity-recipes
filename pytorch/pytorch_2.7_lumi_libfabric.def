@@ -1,0 +1,315 @@
+Bootstrap: docker
+From: rocm/dev-ubuntu-22.04:6.2.4-complete
+
+%labels
+  Author Mats Sjöberg <mats.sjoberg@csc.fi>
+
+%files
+  requirements_pytorch_2.7_lumi.txt /opt/requirements.txt
+
+%post
+  # Use all available cores for compilation
+  export MAKEFLAGS="-j$(nproc)"
+
+  # Some useful environment variables
+  export DEBIAN_FRONTEND=noninteractive
+  export LC_ALL=C
+
+  # To get newer nodejs, we need to use nodesource.com packages
+  curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+  NODE_MAJOR=20
+  echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
+ 
+  # Update packages
+  apt update
+  apt upgrade -y
+
+  apt install -y cmake python-is-python3 git autoconf python3-dev wget git vim \
+      libtool openjdk-8-jdk-headless xvfb python3-opengl libaio-dev \
+      libxslt1-dev libxml2-dev imagemagick libsndfile1 graphviz \
+      libturbojpeg0-dev libxkbcommon-x11-0 libopenblas-dev libsqlite3-dev \
+      ffmpeg unzip libbz2-dev python3-venv locales
+
+  locale-gen en_US.UTF-8
+
+  apt install -y rocm-libs rccl
+
+  # Nodejs required for JupyterLab stuff
+  # apt install -y nodejs npm
+  # Ubuntu's nodejs is too old
+  apt install -y nodejs=20.17.0-1nodesource1
+  
+  # Fix for Java trying to find assistive techs in headless java
+  # https://askubuntu.com/questions/695560/assistive-technology-not-found-awterror
+  sed -i -e '/^assistive_technologies=/s/^/#/' /etc/java-8-openjdk/accessibility.properties
+
+  # Install CXI, based on
+  # https://github.com/DeiC-HPC/BitBulldozersLab/blob/explore/docker_builds/docker_builds/common_docker_defs/Dockerfile.install_cxi
+
+  apt install -y pkg-config libconfig-dev libuv1-dev libfuse-dev libyaml-dev \
+      libnl-3-dev libsensors-dev
+
+  cd /opt/
+  git clone https://github.com/HewlettPackard/shs-cassini-headers
+  mkdir -p /usr/local/share/cassini-headers/
+  mkdir -p /usr/local/include
+  cp shs-cassini-headers/share/cassini-headers/csr_defs.json /usr/local/share/cassini-headers/
+  cp -r shs-cassini-headers/include/* /usr/local/include/
+
+  cd /opt/
+  git clone https://github.com/HewlettPackard/shs-cxi-driver
+  cp -r shs-cxi-driver/include/* /usr/local/include/
+
+  LIBCXI_PATH=/opt/libcxi
+  cd /opt/
+  git clone http://github.com/HewlettPackard/shs-libcxi
+  cd shs-libcxi
+  git checkout 0f3609b5e224636abffc7ceffe6f4e9c83244c08
+  sed -i 's+/usr/share/cassini-headers/csr_defs.json+/usr/local/share/cassini-headers/csr_defs.json+g' utils/cxi_dump_csrs.py
+  ./autogen.sh
+  ./configure --disable-static --with-udevrulesdir=$LIBCXI_PATH/lib/udev/rules.d --prefix=$LIBCXI_PATH CFLAGS='-I /usr/local/include' --with-rocm=/opt/rocm
+  make -j install
+
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$LIBCXI_PATH/lib
+  cd /opt
+  rm -rf shs-cassini-headers shs-cxi-driver shs-libcxi
+
+  # Install libfabric, based on
+  # From https://github.com/DeiC-HPC/BitBulldozersLab/blob/explore/docker_builds/docker_builds/common_docker_defs/Dockerfile.install_libfabric_cxi
+
+  LIBFABRIC_PATH=/opt/libfabric
+  LIBFABRIC_VERSION=1.22.0
+  #LIBFABRIC_VERSION=1.15.2
+
+  apt install -y libjson-c-dev libcurl4-openssl-dev
+
+  cd /opt
+  wget https://github.com/ofiwg/libfabric/releases/download/v$LIBFABRIC_VERSION/libfabric-$LIBFABRIC_VERSION.tar.bz2
+  tar xf libfabric-$LIBFABRIC_VERSION.tar.bz2
+  rm libfabric-$LIBFABRIC_VERSION.tar.bz2
+  cd libfabric-$LIBFABRIC_VERSION
+  # sed is needed to delete the CXI_MAP_IOVA_ALLOC as it was removed. https://github.com/search?q=repo%3AHewlettPackard%2Fshs-libcxi+CXI_MAP_IOVA_ALLOC&type=commits
+  # sed -i 's/| CXI_MAP_IOVA_ALLOC//g' prov/cxi/include/cxip.h
+  ./configure --enable-cxi=$LIBCXI_PATH --prefix=$LIBFABRIC_PATH CFLAGS='-I /usr/local/include' --with-rocr=/opt/rocm --enable-rocr-dlopen
+  make -j install
+
+  cd /opt
+  rm -rf libfabric-$LIBFABRIC_VERSION
+
+  LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$LIBFABRIC_PATH/lib
+  LD_RUN_PATH=$LD_RUN_PATH:$LIBFABRIC_PATH/lib  
+  
+  # Install MPICH
+  # MPICH_VERSION="3.1.4"
+  # cd /opt
+  # wget https://www.mpich.org/static/downloads/${MPICH_VERSION}/mpich-${MPICH_VERSION}.tar.gz
+  # tar xf mpich-${MPICH_VERSION}.tar.gz
+  # rm mpich-${MPICH_VERSION}.tar.gz
+  # cd mpich-${MPICH_VERSION}
+
+  # ./configure --disable-fortran --enable-fast=all,O3 --prefix=/usr
+  # make -j install
+  # ldconfig
+  # cd /opt
+  # rm -rf mpich-3.1.4
+
+  # Install newer MPICH, from
+  # https://github.com/DeiC-HPC/BitBulldozersLab/tree/explore/docker_builds/docker_builds
+  MPICH_VERSION=4.2.3
+  MPICH_PATH=/opt/mpich
+  MPICH_TAR=http://www.mpich.org/static/downloads/${MPICH_VERSION}/mpich-${MPICH_VERSION}.tar.gz
+
+  cd /opt
+  wget $MPICH_TAR
+  tar xf mpich-$MPICH_VERSION.tar.gz
+  rm mpich-$MPICH_VERSION.tar.gz
+  cd mpich-$MPICH_VERSION
+  ##--with-device=ch4:ofi
+  ./configure --with-libfabric=/opt/libfabric \
+              --disable-fortran \
+              --without-ucx \
+              --prefix=/usr
+  make -j install
+  ldconfig
+  cd /opt
+  rm -rf mpich-$MPICH_VERSION
+
+
+  # Install aws-ofi-rccl
+  #apt install -y libfabric-dev
+
+  export RCCL_DEBUG=0
+  cd /opt
+  git clone https://github.com/ROCmSoftwarePlatform/aws-ofi-rccl
+  cd aws-ofi-rccl
+
+  export CPATH=$LIBFABRIC_PATH/include
+  export LIBRARY_PATH=$LD_LIBRARY_PATH
+  ./autogen.sh
+  #./configure
+  ./configure --with-libfabric=$LIBFABRIC_PATH --enable-trace --disable-tests
+  make -j && make install
+  export LD_LIBRARY_PATH=/usr/local/lib:/opt/rocm/lib/:$LD_LIBRARY_PATH  
+  cd /opt
+  rm -rf aws-ofi-rccl
+
+  pip install --upgrade pip
+  # pip install setuptools==79.0.1
+  
+  # Install PyTorch and various Python packages
+  pip3 install --no-cache-dir torch torchvision torchaudio \
+       --extra-index-url https://download.pytorch.org/whl/rocm6.2.4 \
+       -r /opt/requirements.txt
+  
+  # Build Jupyter lab stuff
+  /usr/local/bin/jupyter lab build
+
+  # Install oneCCL
+  cd /opt/
+  git clone https://github.com/oneapi-src/oneCCL -b 2021.13.1
+  cd oneCCL
+  mkdir build
+  cd build
+  /usr/bin/cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local
+  make -j install
+  cd /opt
+  rm -rf oneCCL
+
+  # Install DeepSpeed
+  pip3 install mpi4py ninja
+
+  # We're now relying on JIT working on LUMI as pre-compiling ops doesn't seem to be an option anymore
+  # export PYTORCH_ROCM_ARCH=gfx90a
+  # DS_ACCELERATOR=cuda pip install deepspeed --global-option="build_ext" --global-option="-j8" -v --no-cache-dir
+
+  cd /opt
+  git clone https://github.com/deepspeedai/DeepSpeed/
+  cd DeepSpeed
+  export PYTORCH_ROCM_ARCH=gfx90a
+  DS_ACCELERATOR=cuda DS_BUILD_OPS=0 \
+                      pip install . \
+                      --global-option="build_ext" --global-option="-j8" -v --no-cache-dir
+  cd /opt
+  rm -rf DeepSpeed
+  
+  # Ugly hack: this is for making sure deepspeed gets the hostname and
+  # not the IP (which happens to use wrong network interface on LUMI)
+  sed -i.bak 's/hostname -I/hostname -s/g' /usr/local/lib/python3.10/dist-packages/deepspeed/comm/comm.py
+
+  # CK Flash Attention 2
+  # https://rocm.docs.amd.com/en/latest/how-to/llm-fine-tuning-optimization/model-acceleration-libraries.html#flash-attention-2
+  cd /opt
+  git clone https://github.com/ROCm/flash-attention.git
+  cd flash-attention/
+  export GPU_ARCHS="gfx90a"
+  export MAX_JOBS=$(nproc)
+  pip install . -v
+  cd /opt
+  rm -rf flash-attention/
+
+  
+  # CK xFormers
+  # https://rocm.docs.amd.com/en/latest/how-to/llm-fine-tuning-optimization/model-acceleration-libraries.html#installing-ck-xformers
+  cd /opt
+  git clone --recursive https://github.com/ROCm/xformers.git
+  cd xformers/
+  export PYTORCH_ROCM_ARCH=gfx90a
+  pip install .
+  cd /opt
+  rm -rf xformers
+  
+  # Install from the source
+  # cd /opt
+  # pip uninstall pytorch-triton-rocm triton -y
+  # git clone https://github.com/ROCm/triton.git
+  # cd triton/python
+  # GPU_ARCHS=gfx90a pip install .
+  # cd /opt
+  # rm -rf triton
+
+  # vLLM https://docs.vllm.ai/en/latest/getting_started/amd-installation.html
+  export VLLM_USE_TRITON_FLASH_ATTN=0
+  export PYTORCH_ROCM_ARCH=gfx90a
+
+  pip install /opt/rocm/share/amd_smi
+  
+  cd /opt
+  git clone https://github.com/vllm-project/vllm
+  cd vllm
+  pip install --upgrade numba huggingface-hub[cli,hf_transfer] setuptools_scm
+  pip install setuptools==79.0.1
+  pip install -r requirements/rocm.txt
+  python3 setup.py install
+  cd /opt
+  rm -rf vllm
+
+  # Following this: https://huggingface.co/docs/bitsandbytes/main/en/installation#multi-backend-pip
+  #pip install --no-deps --force-reinstall 'https://github.com/bitsandbytes-foundation/bitsandbytes/releases/download/continuous-release_multi-backend-refactor/bitsandbytes-0.44.1.dev0-py3-none-manylinux_2_24_x86_64.whl'
+
+  # Upstream build instructions for bitsandbytes
+  # Hits this problem (7.5.2025): https://github.com/bitsandbytes-foundation/bitsandbytes/issues/1519
+  # cd /opt
+  # git clone -b multi-backend-refactor https://github.com/bitsandbytes-foundation/bitsandbytes.git
+  # cd bitsandbytes
+  # cmake -DCOMPUTE_BACKEND=hip -DBNB_ROCM_ARCH="gfx90a" -S .
+  # make -j
+  # pip install .
+  # cd /opt
+  # rm -rf bitsandbytes
+
+  # AMD fork of bitsandbytes
+  cd /opt
+  git clone --recurse https://github.com/ROCm/bitsandbytes
+  cd bitsandbytes
+  git checkout rocm_enabled_multi_backend
+  pip install -r requirements-dev.txt
+  cmake -DBNB_ROCM_ARCH="gfx90a" -DCOMPUTE_BACKEND=hip -S . #Use -DBNB_ROCM_ARCH="gfx90a;gfx942" to target specific gpu arch
+  make -j
+  pip install .
+  cd /opt
+  rm -rf bitsandbytes
+  
+  cd /opt
+  git clone https://github.com/ROCm/apex
+  cd apex
+  # see https://github.com/ROCm/apex/issues/191
+  git checkout b8ad311e75cd03d1c6510453745169121587266d
+  # for some reason the "official command" doesn't install extensions even though it should
+  #pip install -r requirements.txt
+  pip install -v --disable-pip-version-check --no-cache-dir --no-build-isolation --config-settings "--build-option=--cpp_ext" --config-settings "--build-option=--cuda_ext" ./
+  #python3 setup.py install -v --cpp_ext --cuda_ext #  --parallel 8
+  cd /opt
+  rm -rf apex
+
+  # Install faiss
+  apt install -y swig libgflags-dev
+
+  cd /opt
+  git clone https://github.com/facebookresearch/faiss
+
+  export PYTORCH_ROCM_ARCH=gfx90a
+  cd faiss
+  cmake -B build . -DFAISS_ENABLE_GPU=ON -DFAISS_ENABLE_ROCM=ON -DFAISS_ENABLE_PYTHON=ON -DBUILD_SHARED_LIBS=ON -DCMAKE_HIP_ARCHITECTURES="gfx90a"
+  make -C build -j5 faiss
+
+  sed -ie 's/-doxygen//' build/faiss/python/CMakeFiles/swigfaiss_swig_compilation.dir/build.make
+  make -C build -j5 swigfaiss
+  cd build/faiss/python
+  #python setup.py install
+  pip install .
+  
+  cd /opt/faiss
+  make -C build install
+  cd /opt
+  rm -rf faiss
+
+  apt clean
+
+
+%environment
+  export LC_ALL=C
+  export LD_LIBRARY_PATH=/usr/local/lib:/opt/rocm/lib/:/usr/local/lib/python3.10/dist-packages/faiss:$LD_LIBRARY_PATH
+  export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+  export PYTORCH_ROCM_ARCH=gfx90a
+  export KERAS_BACKEND="torch"
+  export VLLM_USE_TRITON_FLASH_ATTN=0
