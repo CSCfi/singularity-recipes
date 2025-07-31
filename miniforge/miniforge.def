@@ -2,13 +2,6 @@ Bootstrap: docker
 From: rockylinux/rockylinux:8.10
 
 %post
-    cp /usr/bin/true /usr/sbin/useradd
-    cp /usr/bin/true /usr/sbin/groupadd
-
-    dnf -y update
-    dnf -y install curl
-    dnf -y clean all
-
     curl --location --output /opt/miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
     sh /opt/miniforge3.sh -b -p /opt/miniforge3
     rm -f /opt/miniforge3.sh
@@ -18,10 +11,13 @@ From: rockylinux/rockylinux:8.10
     . /opt/mamba-hook.sh
 
     # install packages with mamba
+    mamba create -n myenv jupyterlab
+    mamba activate myenv
 
 %environment
     export MAMBA_ROOT_PREFIX=/opt/miniforge3
 
 %runscript
     . /opt/mamba-hook.sh
+    mamba activate myenv
     eval "$@"
