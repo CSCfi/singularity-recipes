@@ -1,0 +1,19 @@
+Bootstrap: docker
+From: rockylinux/rockylinux:8.10
+
+%post
+    export UV_INSTALL_DIR=/usr/local/bin
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+
+    ROOT_DIR=/opt
+    export UV_CACHE_DIR=$ROOT_DIR/uv
+    export UV_PYTHON_CACHE_DIR=$ROOT_DIR/uv
+    export UV_PYTHON_BIN_DIR=$ROOT_DIR/uv
+    export UV_PYTHON_INSTALL_DIR=$ROOT_DIR/uv
+    export UV_TOOL_BIN_DIR=$ROOT_DIR/uv
+    export UV_TOOL_DIR=$ROOT_DIR/uv
+
+    uv python install 3.12
+    uv venv --python 3.12 /opt/myenv
+    . /opt/myenv/bin/activate
+    uv pip install numpy
