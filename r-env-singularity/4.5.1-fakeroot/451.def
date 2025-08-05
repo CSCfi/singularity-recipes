@@ -348,8 +348,10 @@ echo "options(BioC_mirror = 'https://packagemanager.posit.co/bioconductor')" >> 
   R --slave -e 'install.packages("systemfonts", repos = "https://cran.rstudio.com/")'
 
 # locate
+  cp /usr/bin/true /usr/sbin/useradd
+  cp /usr/bin/true /usr/sbin/groupadd
   dnf -y install mlocate
-  updatedb
+  updatedb -l 0
 
 # GEOS
 # http://download.osgeo.org/geos/
