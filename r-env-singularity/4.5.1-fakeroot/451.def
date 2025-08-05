@@ -1,0 +1,641 @@
+Bootstrap: docker
+From: rockylinux:9.2
+
+%labels
+
+# container info
+  licensing_info="/usr/licensing.txt" 
+  maintainer=Heli Juottonen <heli.juottonen@csc.fi>
+
+%files
+
+# license files
+  intel-simplified-software-license.txt /usr/intel-simplified-software-license.txt
+  licensing.txt /usr/licensing.txt
+  nvidia-nccl-license.txt /usr/nvidia-nccl-license.txt
+
+# OneAPI repo
+  oneapi.repo /etc/yum.repos.d
+
+# RStudio Server files
+# https://github.com/rocker-org/rocker-versioned2
+
+  disable_auth_rserver.conf /etc/rstudio/disable_auth_rserver.conf
+  pam-helper.sh /usr/lib/rstudio-server/bin/pam-helper
+  userconf.sh /etc/cont-init.d/userconf
+
+# JAGS tar file
+# https://sourceforge.net/projects/mcmc-jags/files/
+# Set JAGS version under %post to match this file
+  JAGS-*.tar.gz /opt/tar/
+
+# HDF5 tar file
+# https://www.hdfgroup.org/downloads/hdf5/source-code/
+# Set HDF5 version under %post to match this file
+#  hdf5-*.tar.gz /opt/tar
+# moved to dnf installations
+
+# SAGA tar file
+# Get the tarball from:
+# https://sourceforge.net/projects/saga-gis/files/
+  saga-*.tar.gz /opt/tar
+
+## S6 supervisor
+# https://github.com/just-containers/s6-overlay/releases
+  s6-*.tar.xz /opt/tar
+
+# installation lists
+
+# libraries
+  451-rocky-libs.txt /opt/libreqs.txt
+
+# Python packages
+  451-rocky-py.txt /opt/pyreqs.txt
+
+%post
+
+## MAKE PAM-HELPER + USERCONF EXECUTABLE
+
+  cd /usr/lib/rstudio-server/bin && chmod +x pam-helper
+  cd /etc/cont-init.d && chmod +x userconf
+  cd
+
+# VARIABLES FOR INSTALLATIONS
+
+## Use all available cores for compilation
+  export MAKEFLAGS="-j$(nproc)"
+
+# gcc
+  export GCC_VERSION=13
+  
+# R
+# build date is yyyy-mm-dd
+  export BUILD_DATE=2025-07-07
+  export CRAN=${CRAN:-https://cloud.r-project.org/}
+  export R_BASEVER=4
+  export R_VERSION=4.5.1
+  export R_PACKAGE_DIR=/appl/soft/math/r-env/451/451-rpackages
+
+# RStudio Server
+  export RSTUDIO_VERSION=2025.05.1-513
+  export S6_VERSION=3.2.1.0
+  export S6_ARCH=x86_64
+  export S6_BEHAVIOUR_IF_STAGE2_FAILS=2
+  export PATH=/usr/lib/rstudio-server/bin:$PATH
+  export PANDOC_TEMPLATES_VERSION=${PANDOC_TEMPLATES_VERSION:-3.7}
+
+# needed for rgdal
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib:/usr/local/lib64
+  export LD_RUN_PATH=$LD_RUN_PATH:/usr/local/lib:/usr/local/lib64
+  export LIBRARY_PATH=$LIBRARY_PATH:/usr/local/lib:/usr/local/lib64
+
+# Intel OneMKL
+# also check version number in %environment
+  export MKL_VERSION=2025.2
+
+# GSL (GNU Scientific Library)
+  export GSL_VERSION=2.8
+
+# JAGS
+  export JAGS_VERSION=4.3.2
+
+# HDF5
+#  export HDF5_VERSION=1.14.6
+
+# GIS software versions (GDAL, GEOS, PROJ, SAGA)
+  export GDAL_DATA=/usr/share/gdal
+  export GDAL_VERSION=3.11.1
+  export GEOS_VERSION=3.13.1
+  export PROJ_VERSION=9.6.2
+  export PROJDATA_VERSION=1.22
+  export SAGA_VERSION=9.8.1
+#  export OPENJPEG_VERSION=2.5.3
+# moved to dnf installations
+  
+  export CDO_VERSION=2.5.2
+  # file download information for the above CDO version (check every time)
+  export CDO_FOLDER=29938
+  export LIBAEC_VERSION=1.1.3
+  export MAGICS_VERSION=4.16.0
+
+# GraphViz
+# https://gitlab.com/graphviz/graphviz/-/releases
+  export GRAPHVIZ_VERSION=12.2.1
+
+# NetCDF
+#  export NETCDF_VERSION=4.9.3
+# moved to dnf installations
+
+# MOFED/MPI
+  export MOFED_OS=rhel9.2
+  export MOFED_VERSION=5.8
+
+# general
+  export CC=gcc
+  export LANG=en_US.UTF-8
+  export LC_ALL=en_US.UTF-8
+  export OMPI_CC=gcc
+  export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/lib/pkgconfig
+  export TERM=xterm
+  unset TMPDIR
+
+# INSTALLATIONS
+
+# EPEL repository
+  dnf -y install epel-release
+
+# gcc 13
+  dnf -y install gcc-toolset-${GCC_VERSION}
+  source /opt/rh/gcc-toolset-${GCC_VERSION}/enable
+
+# Code Ready Linux Builder repository (replaced powertools)
+  dnf -y install dnf-plugins-core
+  dnf config-manager --enable crb
+
+# locale to allow en_US.UTF-8
+  dnf -y install glibc-langpack-en
+
+# upgrade packages
+  dnf -y upgrade
+
+# PostgreSQL repository
+# https://postgis.net/install/
+  dnf -y install https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+
+# disable default PostgreSQL module
+  dnf -qy module disable postgresql
+
+# install PostgreSQL 15
+  dnf -y install postgresql15 \
+		 postgresql15-server \
+                 postgresql15-devel  \
+                 postgresql15-libs   \
+                 postgresql15-contrib 
+  export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/pgsql-15/lib/pkgconfig
+
+  cd /usr/bin/
+  rm postgresql-15-setup
+  ln -s /usr/pgsql-15/bin/postgresql-15-setup .
+  cd
+
+# install libraries from list
+  dnf -y install $(cat /opt/libreqs.txt)
+
+# Intel OneMKL
+  dnf -y install intel-oneapi-mkl-${MKL_VERSION}.x86_64
+  source /opt/intel/oneapi/setvars.sh intel64
+
+  MKL="-L${MKLROOT}/lib/intel64 \
+	-Wl,--no-as-needed	  \
+	-lmkl_gf_lp64		  \
+	-lmkl_gnu_thread	        \
+	-lmkl_core -lgomp	        \
+	-lpthread -lm -ldl"
+
+# JDK 21
+# https://jdk.java.net/archive/
+  wget https://download.java.net/java/GA/jdk21/fd2272bbf8e04c3dbaee13770090416c/35/GPL/openjdk-21_linux-x64_bin.tar.gz
+  tar -zxvf openjdk-21_linux-x64_bin.tar.gz
+  mv jdk-21/ /usr/local/
+  export JAVA_HOME=/usr/local/jdk-21
+  export PATH=$PATH:$JAVA_HOME/bin
+  ldconfig
+  rm openjdk-21_linux-x64_bin.tar.gz
+
+# GSL (GNU Scientific Library)
+  wget https://mirror.ibcp.fr/pub/gnu/gsl/gsl-${GSL_VERSION}.tar.gz
+  tar -zxvf gsl-${GSL_VERSION}.tar.gz
+  cd gsl-${GSL_VERSION}
+  ./configure
+  make && make install
+  ldconfig
+  cd
+  rm gsl-${GSL_VERSION}.tar.gz
+
+# HDF5
+# enable-cxx important so that GDAL finds HDF5
+#  cd /opt/tar && tar -zxvf hdf5-${HDF5_VERSION}.tar.gz
+#  cd hdf5-${HDF5_VERSION}
+#  ./configure --prefix=/usr/local --enable-cxx
+#  make
+#  make install
+#  ldconfig
+#  cd
+#  rm /opt/tar/hdf5-${HDF5_VERSION}.tar.gz
+#  rm -rf /opt/tar/hdf5-${HDF5_VERSION}
+
+# NetCDF
+#  wget https://github.com/Unidata/netcdf-c/archive/refs/tags/v${NETCDF_VERSION}.tar.gz
+#  tar -zxvf v${NETCDF_VERSION}.tar.gz
+#  cd netcdf-c-${NETCDF_VERSION}
+#  ./configure \
+#        --with-hdf5=/usr/local
+#  make && make install
+#  cd
+#  rm -rf netcdf-c-${NETCDF_VERSION}
+#  rm v${NETCDF_VERSION}.tar.gz
+
+
+# JAGS
+  cd /opt/tar && tar -xvzf JAGS-${JAGS_VERSION}.tar.gz
+  cd JAGS-${JAGS_VERSION}
+  ./configure				\
+	--libdir=/usr/local/lib64	\
+	--with-blas="$MKL"
+  make && make install
+  ldconfig
+  cd
+  rm /opt/tar/JAGS-${JAGS_VERSION}.tar.gz
+  rm -rf /opt/tar/JAGS-${JAGS_VERSION}
+  
+# Clang + LLVM toolset
+  dnf -y install llvm-toolset
+  
+# CMake
+  dnf -y install cmake
+
+# Graphviz
+  wget https://gitlab.com/graphviz/graphviz/-/archive/${GRAPHVIZ_VERSION}/graphviz-${GRAPHVIZ_VERSION}.tar.gz
+  tar -xvzf graphviz-${GRAPHVIZ_VERSION}.tar.gz
+  cd graphviz-${GRAPHVIZ_VERSION}
+  ./autogen.sh
+  ./configure
+  make && make install
+  cd
+  rm graphviz-${GRAPHVIZ_VERSION}.tar.gz
+
+# R
+  wget https://cran.rstudio.com/src/base/R-${R_BASEVER}/R-${R_VERSION}.tar.gz
+  tar -xzvf R-${R_VERSION}.tar.gz
+  cd R-${R_VERSION}
+
+  ./configure 			\
+	--prefix=/usr		\
+	--with-blas="$MKL"	\
+	--with-lapack		\
+	--enable-R-shlib	\
+	--enable-memory-profiling
+  make && make install
+  R CMD javareconf
+  cd
+  rm R-${R_VERSION}.tar.gz
+
+# RStudio Server
+
+  # Set date-locked Posit Public Package Manager snapshot of CRAN (note: lib64 for Rocky/RHEL/CentOS, lib for Ubuntu18)
+  if [ -z "$BUILD_DATE" ]; then P3M=$CRAN; \
+  else P3M=https://packagemanager.posit.co/cran/${BUILD_DATE}; fi
+  echo P3M=$P3M >> /etc/environment
+  echo "options(repos = c(CRAN='$P3M'), download.file.method = 'libcurl')" >> /usr/lib64/R/etc/Rprofile.site
+echo "options(BioC_mirror = 'https://packagemanager.posit.co/bioconductor')" >> /usr/lib64/R/etc/Rprofile.site
+
+  # Add R_LIBS_USER and R_LIBS_SITE to Renviron
+  echo "R_LIBS_USER='/usr/lib64/R/library'" >> \
+  	/usr/lib64/R/etc/Renviron
+  echo "R_LIBS_SITE='${R_PACKAGE_DIR}'" >> \
+  	/usr/lib64/R/etc/Renviron	
+
+  # S6 supervisor
+  # https://github.com/just-containers/s6-overlay#installation
+  S6_ARCH=x86_64
+  tar -C / -Jxpf /opt/tar/s6-overlay-${S6_ARCH}.tar.xz
+
+  # RStudio Server installation (https://posit.co/download/rstudio-server/)
+  RSTUDIO_VERSION=2025.05.1-513
+  RSTUDIO_URL="https://download2.rstudio.org/server/rhel9/x86_64/rstudio-server-rhel-${RSTUDIO_VERSION}-x86_64.rpm"
+  wget $RSTUDIO_URL
+  yum -y install rstudio-server-rhel-${RSTUDIO_VERSION}-x86_64.rpm
+  rm rstudio-server-rhel-${RSTUDIO_VERSION}-x86_64.rpm
+
+  # Symlink pandoc & standard pandoc templates for system-wide use
+  ln -s /usr/lib/rstudio-server/bin/pandoc/pandoc /usr/bin
+  ln -s /usr/lib/rstudio-server/bin/pandoc/pandoc-citeproc /usr/bin
+  git clone --recursive --branch ${PANDOC_TEMPLATES_VERSION} https://github.com/jgm/pandoc-templates
+  mkdir -p /opt/pandoc/templates
+  cp -r pandoc-templates*/* /opt/pandoc/templates && rm -rf pandoc-templates*
+  mkdir /root/.pandoc && ln -s /opt/pandoc/templates /root/.pandoc/templates
+
+  # RStudio wants an /etc/R, will populate from $R_HOME/etc
+  mkdir -p /etc/R
+  echo 'if(is.na(Sys.getenv("HTTR_LOCALHOST", unset=NA))) { options(httr_oob_default = TRUE) }' >> /usr/lib64/R/etc/Rprofile.site
+  echo "PATH=${PATH}" >> /usr/lib64/R/etc/Renviron
+
+  # More robust file locking to avoid errors when using shared volumes
+  echo 'lock-type=advisory' >> /etc/rstudio/file-locks
+
+  # Texlive + a few R packages for RMarkdown
+  dnf -y update && dnf -y install 	\
+			pandoc 		\
+			texlive 			
+
+  # R packages for RMarkdown
+
+  R --slave -e 'install.packages("tinytex", repos = "https://cran.rstudio.com/")'
+  R --slave -e 'tinytex::install_tinytex(force = TRUE, add_path = TRUE)'
+  R --slave -e 'install.packages("blogdown", repos = "https://cran.rstudio.com/")'
+  R --slave -e 'install.packages("bookdown", repos = "https://cran.rstudio.com/")'
+  R --slave -e 'install.packages("rticles", repos = "https://cran.rstudio.com/")'
+  R --slave -e 'install.packages("rmdshower", repos = "https://cran.rstudio.com/")'
+  R --slave -e 'install.packages("xaringan", repos = "https://cran.rstudio.com/")'
+
+  # Further R packages
+  # (Selected packages that ran into errors when installing outside container)
+
+  R --slave -e 'install.packages("vroom", repos = "https://cran.rstudio.com/")'
+  R --slave -e 'install.packages("systemfonts", repos = "https://cran.rstudio.com/")'
+
+# locate
+  dnf -y install mlocate
+  updatedb
+
+# GEOS
+# http://download.osgeo.org/geos/
+  cd /opt
+  wget http://download.osgeo.org/geos/geos-${GEOS_VERSION}.tar.bz2
+  tar -xvjf geos-${GEOS_VERSION}.tar.bz2
+  cd geos-${GEOS_VERSION}
+  mkdir _build
+  cd _build
+  cmake \
+	-DCMAKE_BUILD_TYPE=Release \
+	-DCMAKE_INSTALL_PREFIX=/usr/local \
+	..
+  make
+  ctest
+  make install
+  ldconfig
+  cd
+  rm -rf /opt/geos-${GEOS_VERSION}
+  rm /opt/geos-${GEOS_VERSION}.tar.bz2
+  
+  
+# PROJ
+# https://proj.org/download.html#current-release
+  cd /opt
+  wget https://download.osgeo.org/proj/proj-${PROJ_VERSION}.tar.gz
+  tar -xvzf proj-${PROJ_VERSION}.tar.gz
+  cd proj-${PROJ_VERSION}
+  mkdir build
+  cd build
+  cmake \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX=/usr/local \
+  ..
+  cmake --build .
+  cmake --build . --target install
+  ldconfig
+  cd
+  rm -rf /opt/proj-${PROJ_VERSION}
+  rm /opt/proj-${PROJ_VERSION}.tar.gz
+
+# projdata
+# https://proj.org/download.html#download
+  cd /usr/local/share/proj
+  wget https://download.osgeo.org/proj/proj-data-${PROJDATA_VERSION}.tar.gz
+  tar -xvzf proj-data-${PROJDATA_VERSION}.tar.gz
+  rm proj-data-${PROJDATA_VERSION}.tar.gz
+  cd
+
+# openjpg
+# https://github.com/uclouvain/openjpeg
+#  cd /opt
+#  wget https://github.com/uclouvain/openjpeg/archive/refs/tags/v${OPENJPEG_VERSION}.tar.gz
+#  tar -xvzf v${OPENJPEG_VERSION}.tar.gz
+#  cd openjpeg-${OPENJPEG_VERSION}
+#  mkdir build
+#  cd build
+#  cmake .. -DCMAKE_BUILD_TYPE=Release
+#  make
+#  make install
+#  make clean
+#  ldconfig
+#  cd
+#  rm -rf /opt/openjpeg-${OPENJPEG_VERSION}
+#  rm /opt/v${OPENJPEG_VERSION}.tar.gz
+
+# GDAL
+# http://download.osgeo.org/gdal/
+# https://gdal.org/development/building_from_source.html#building-from-source
+  cd /opt
+  wget http://download.osgeo.org/gdal/${GDAL_VERSION}/gdal-${GDAL_VERSION}.tar.gz
+  tar -xvzf gdal-${GDAL_VERSION}.tar.gz
+  cd gdal-${GDAL_VERSION}  
+  mkdir build
+  cd build
+  cmake \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_PREFIX_PATH=/usr/local \
+  -DCMAKE_INSTALL_PREFIX=/usr/local \
+  -DBUILD_PYTHON_BINDINGS:BOOL=OFF \
+  -DGDAL_USE_GEOTIFF_INTERNAL=ON \
+  -DGDAL_USE_TIFF_INTERNAL=ON \
+  -DGDAL_USE_JPEG_INTERNAL=ON \
+  -DGDAL_USE_GIF_INTERNAL=ON \
+  -DGDAL_USE_PNG_INTERNAL=ON \
+  -DGDAL_USE_ZLIB_INTERNAL=ON \
+  -DGDAL_USE_OPENJPEG=ON \
+  -DGDAL_USE_HDF5=ON \
+  -DGDAL_USE_HDF4=ON \
+  -DGDAL_USE_CURL=ON \
+  ..
+  cmake --build .
+  cmake --build . --target install
+  ldconfig
+  cd
+  rm -rf /opt/gdal-${GDAL_VERSION} 
+  rm /opt/gdal-${GDAL_VERSION}.tar.gz
+
+
+# SAGA
+  cd /opt/tar && tar -xvzf saga-${SAGA_VERSION}.tar.gz
+  cd saga-${SAGA_VERSION}/saga-gis
+  mkdir build
+  cd build
+  cmake .. \
+  -DCMAKE_BUILD_TYPE=RELEASE \
+   -DWITH_TRIANGLE=OFF \
+   -DWITH_SYSTEM_SVM=ON \
+   -DWITH_DEV_TOOLS=OFF 
+  cmake --build . --config Release
+  cmake --install .
+  ldconfig
+  cd
+  rm -rf /opt/tar/saga-${SAGA_VERSION}/saga-gis
+  rm /opt/tar/saga-${SAGA_VERSION}.tar.gz
+
+# postgis
+  dnf -y install postgis33_15
+
+# libaec (replacement of szip, required by cdo, https://gitlab.dkrz.de/k202009/libaec)
+  cd /opt
+  wget https://gitlab.dkrz.de/k202009/libaec/-/archive/v${LIBAEC_VERSION}/libaec-v${LIBAEC_VERSION}.tar.gz
+  tar -xvzf libaec-v${LIBAEC_VERSION}.tar.gz
+  cd libaec-v${LIBAEC_VERSION}  
+  mkdir build
+  cd build
+  cmake ..
+  make install
+  cd
+  rm -rf /opt/libaec-v${LIBAEC_VERSION} 
+  rm /opt/libaec-v${LIBAEC_VERSION}.tar.gz
+
+# Magics (required for cdo, https://confluence.ecmwf.int/display/MAGP/Installation+Guide)
+  mkdir /opt/magsrc
+  cd /opt/magsrc
+  wget https://confluence.ecmwf.int/download/attachments/3473464/Magics-${MAGICS_VERSION}-Source.tar.gz
+  tar -xvzf Magics-${MAGICS_VERSION}-Source.tar.gz
+
+# configure and build in a separate directory
+  mkdir -p /opt/mag/build
+  cd /opt/mag/build
+  cmake /opt/magsrc/Magics-${MAGICS_VERSION}-Source
+  make -j8
+  ctest -j8
+  make install
+  cd
+  rm -rf /opt/mag
+  rm -rf /opt/magsrc
+  
+# cdo (https://code.mpimet.mpg.de/projects/cdo)
+  cd /opt
+  wget https://code.mpimet.mpg.de/attachments/download/${CDO_FOLDER}/cdo-${CDO_VERSION}.tar.gz
+  tar -xvzf cdo-${CDO_VERSION}.tar.gz
+  cd cdo-${CDO_VERSION}
+  LIBS="-lhdf5" ./configure --with-netcdf=/usr/local --with-eccodes=/usr/local
+  make -j8
+  make install
+  cd
+  rm -rf /opt/cdo-${CDO_VERSION}
+  rm -rf /opt/${CDO_FOLDER}
+  rm /opt/cdo-${CDO_VERSION}.tar.gz 
+
+
+# Mellanox OFED + OpenMPI installations
+  wget https://www.mellanox.com/downloads/ofed/RPM-GPG-KEY-Mellanox
+  rpm --import RPM-GPG-KEY-Mellanox
+  rm RPM-GPG-KEY-Mellanox
+
+  cd /etc/yum.repos.d/
+  wget https://linux.mellanox.com/public/repo/mlnx_ofed/latest/${MOFED_OS}/mellanox_mlnx_ofed.repo
+
+  openmpi_package=`dnf --repo mlnx_ofed* whatprovides openmpi | grep -B 1 mlnx_ofed | grep -v Repo |  awk '{print $1;}' | sort | tail -n 1`
+  rdmacore_package=`dnf --repo mlnx_ofed* whatprovides rdma-core | grep -B 1 mlnx_ofed | grep -v Repo |  awk '{print $1;}' | sort | tail -n 1`
+  ucxib_package=`dnf --repo mlnx_ofed* whatprovides ucx-ib | grep -B 1 mlnx_ofed | grep -v Repo |  awk '{print $1;}' | sort | tail -n 1`
+  dnf -y install $openmpi_package $rdmacore_package $ucxib_package
+
+# Settings for compiling with MPI and CUDA
+  export OMPI_DIR=$(ls -1d /usr/mpi/gcc/openmpi-4.* | head -n1)
+  export PATH=$OMPI_DIR/bin:$PATH
+  export LD_LIBRARY_PATH=$OMPI_DIR/lib64:$LD_LIBRARY_PATH
+  export PATH=/usr/local/cuda/bin:$PATH
+
+# NVIDIA + Py package installations
+
+  # Install CUDA, CUDNN, NCCL
+  cd /etc/yum.repos.d/
+  dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel9/x86_64/cuda-rhel9.repo
+  dnf -y module install nvidia-driver:latest-dkms
+  dnf -y install cuda-12-4 libnccl libnccl-devel libnccl-static libcudnn9-cuda-12 libcudnn9-devel-cuda-12 
+
+  # Settings for compiling with MPI and CUDA
+  export OMPI_DIR=$(ls -1d /usr/mpi/gcc/openmpi-4.* | head -n1)
+  export PATH=$OMPI_DIR/bin:$PATH
+  export LD_LIBRARY_PATH=$OMPI_DIR/lib64:$LD_LIBRARY_PATH
+  export PATH=/usr/local/cuda/bin:$PATH
+  cd
+
+  alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
+  alternatives --install /usr/bin/pip3 pip3 /usr/bin/pip3.12 1
+
+  # upgrading pip3 because otherwise pyqt5 installation fails
+  pip3 install --upgrade pip
+
+  # TensorFlow
+  pip3 install tensorflow
+
+  # Py packages
+  pip3 install -r /opt/pyreqs.txt 
+
+  dnf clean all
+
+%environment
+
+# general
+  source /opt/rh/gcc-toolset-13/enable
+  export BUILD_DATE=2025-07-07
+  export CC=gcc
+  export JAVA_HOME=/usr/local/jdk-21
+  export PATH=$PATH:$JAVA_HOME/bin
+  export LANG=en_US.UTF-8
+  export LC_ALL=en_US.UTF-8
+  unset MANPATH
+
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib:/usr/local/lib64
+  export LD_RUN_PATH=$LD_RUN_PATH:/usr/local/lib:/usr/local/lib64
+  export LIBRARY_PATH=$LIBRARY_PATH:/usr/local/lib:/usr/local/lib64
+
+  export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/lib/pkgconfig
+  export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/pgsql-15/lib/pkgconfig
+
+  export PG_INCDIR=/usr/pgsql-15/include
+  export PG_LIBDIR=/usr/pgsql-15/lib
+
+# R variables
+# Some are Puhti-specific
+
+  export AWS_DEFAULT_REGION=''
+  export CRAN=${CRAN:-https://cloud.r-project.org/}
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/lib:/usr/lib:/usr/local/lib:/usr/lib64
+
+  export PANDOC_TEMPLATES_VERSION=${PANDOC_TEMPLATES_VERSION:-3.7}
+  export PATH=${R_PACKAGE_DIR}/Rmpi:$PATH
+  export PATH=${R_PACKAGE_DIR}/snow:$PATH
+  export PATH=/usr/lib/rstudio-server/bin:$PATH
+  export R_LIBS_SITE=${R_PACKAGE_DIR}
+  export R_LIBS_USER=/usr/lib64/R/library
+  export TERM=xterm
+  export TZ=Europe/Helsinki
+
+# GDAL
+  export GDAL_DATA=/usr/share/gdal
+
+# MPI
+  export OMPI_CC=gcc
+  export OMPI_DIR=$(ls -1d /usr/mpi/gcc/openmpi-4.* | head -n1)
+  export PATH=/usr/local/cuda/bin:$OMPI_DIR/bin:$PATH
+  export LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/local/lib64:$OMPI_DIR/lib64:$LD_LIBRARY_PATH
+  export PMIX_MCA_gds=hash
+  export SLURM_MPI_TYPE=pmix_v3
+
+# OpenMP
+  export OMP_NUM_THREADS=1
+  export OMP_AFFINITY_FORMAT="Process %P level %L thread %0.3n affinity %A"
+  export OMP_DISPLAY_AFFINITY=true
+
+# NVIDIA
+  export CUDA_HOME=/usr/local/cuda
+  export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+  export LD_LIBRARY_PATH=/usr/local/cuda/extras/CUPTI/lib64:$LD_LIBRARY_PATH
+  export PATH=/usr/local/cuda/bin:$PATH
+
+# set afterwards in a sandbox:
+## OneMKL environment variables into /.singularity.d/env/91-environment.sh
+#  source /opt/intel/oneapi/setvars.sh intel64
+#
+#  echo "export CPATH=$CPATH" >> $APPTAINER_ENVIRONMENT
+#  echo "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> $APPTAINER_ENVIRONMENT
+#  echo "export LIBRARY_PATH=$LIBRARY_PATH" >> $APPTAINER_ENVIRONMENT
+#  echo "export MKLROOT=$MKLROOT" >> $APPTAINER_ENVIRONMENT
+#  echo "export NLSPATH=$NLSPATH" >> $APPTAINER_ENVIRONMENT
+#  echo "export PATH=$PATH" >> $APPTAINER_ENVIRONMENT
+#  echo "export PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $APPTAINER_ENVIRONMENT
+  
+%runscript
+
+  exec /bin/bash R "$@"
+  exec /bin/bash /init "$@"
+
+%startscript
+
+  exec /bin/bash R "$@"
+  exec /bin/bash /init "$@
