@@ -58,7 +58,7 @@ From: rockylinux:9.2
 
   cd /usr/lib/rstudio-server/bin && chmod +x pam-helper
   cd /etc/cont-init.d && chmod +x userconf
-  cd
+  cd /
 
 # VARIABLES FOR INSTALLATIONS
 
@@ -162,6 +162,9 @@ From: rockylinux:9.2
 # https://postgis.net/install/
   dnf -y install https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x86_64/pgdg-redhat-repo-latest.noarch.rpm
 
+  # Disable GPG checks for postgre repo due to issues
+  sed -i 's/gpgcheck=1/gpgcheck=0/g' /etc/yum.repos.d/pgdg-redhat-all.repo
+
 # disable default PostgreSQL module
   dnf -qy module disable postgresql
 
@@ -176,7 +179,7 @@ From: rockylinux:9.2
   cd /usr/bin/
   rm postgresql-15-setup
   ln -s /usr/pgsql-15/bin/postgresql-15-setup .
-  cd
+  cd /
 
 # install libraries from list
   dnf -y install $(cat /opt/libreqs.txt)
@@ -209,7 +212,7 @@ From: rockylinux:9.2
   ./configure
   make && make install
   ldconfig
-  cd
+  cd /
   rm gsl-${GSL_VERSION}.tar.gz
 
 # HDF5
@@ -220,7 +223,7 @@ From: rockylinux:9.2
 #  make
 #  make install
 #  ldconfig
-#  cd
+#  cd /
 #  rm /opt/tar/hdf5-${HDF5_VERSION}.tar.gz
 #  rm -rf /opt/tar/hdf5-${HDF5_VERSION}
 
@@ -231,7 +234,7 @@ From: rockylinux:9.2
 #  ./configure \
 #        --with-hdf5=/usr/local
 #  make && make install
-#  cd
+#  cd /
 #  rm -rf netcdf-c-${NETCDF_VERSION}
 #  rm v${NETCDF_VERSION}.tar.gz
 
@@ -244,7 +247,7 @@ From: rockylinux:9.2
 	--with-blas="$MKL"
   make && make install
   ldconfig
-  cd
+  cd /
   rm /opt/tar/JAGS-${JAGS_VERSION}.tar.gz
   rm -rf /opt/tar/JAGS-${JAGS_VERSION}
   
@@ -261,7 +264,7 @@ From: rockylinux:9.2
   ./autogen.sh
   ./configure
   make && make install
-  cd
+  cd /
   rm graphviz-${GRAPHVIZ_VERSION}.tar.gz
 
 # R
@@ -277,7 +280,7 @@ From: rockylinux:9.2
 	--enable-memory-profiling
   make && make install
   R CMD javareconf
-  cd
+  cd /
   rm R-${R_VERSION}.tar.gz
 
 # RStudio Server
@@ -364,7 +367,7 @@ echo "options(BioC_mirror = 'https://packagemanager.posit.co/bioconductor')" >> 
   ctest
   make install
   ldconfig
-  cd
+  cd /
   rm -rf /opt/geos-${GEOS_VERSION}
   rm /opt/geos-${GEOS_VERSION}.tar.bz2
   
@@ -384,7 +387,7 @@ echo "options(BioC_mirror = 'https://packagemanager.posit.co/bioconductor')" >> 
   cmake --build .
   cmake --build . --target install
   ldconfig
-  cd
+  cd /
   rm -rf /opt/proj-${PROJ_VERSION}
   rm /opt/proj-${PROJ_VERSION}.tar.gz
 
@@ -394,7 +397,7 @@ echo "options(BioC_mirror = 'https://packagemanager.posit.co/bioconductor')" >> 
   wget https://download.osgeo.org/proj/proj-data-${PROJDATA_VERSION}.tar.gz
   tar -xvzf proj-data-${PROJDATA_VERSION}.tar.gz
   rm proj-data-${PROJDATA_VERSION}.tar.gz
-  cd
+  cd /
 
 # openjpg
 # https://github.com/uclouvain/openjpeg
@@ -409,7 +412,7 @@ echo "options(BioC_mirror = 'https://packagemanager.posit.co/bioconductor')" >> 
 #  make install
 #  make clean
 #  ldconfig
-#  cd
+#  cd /
 #  rm -rf /opt/openjpeg-${OPENJPEG_VERSION}
 #  rm /opt/v${OPENJPEG_VERSION}.tar.gz
 
@@ -441,7 +444,7 @@ echo "options(BioC_mirror = 'https://packagemanager.posit.co/bioconductor')" >> 
   cmake --build .
   cmake --build . --target install
   ldconfig
-  cd
+  cd /
   rm -rf /opt/gdal-${GDAL_VERSION} 
   rm /opt/gdal-${GDAL_VERSION}.tar.gz
 
@@ -459,7 +462,7 @@ echo "options(BioC_mirror = 'https://packagemanager.posit.co/bioconductor')" >> 
   cmake --build . --config Release
   cmake --install .
   ldconfig
-  cd
+  cd /
   rm -rf /opt/tar/saga-${SAGA_VERSION}/saga-gis
   rm /opt/tar/saga-${SAGA_VERSION}.tar.gz
 
@@ -475,7 +478,7 @@ echo "options(BioC_mirror = 'https://packagemanager.posit.co/bioconductor')" >> 
   cd build
   cmake ..
   make install
-  cd
+  cd /
   rm -rf /opt/libaec-v${LIBAEC_VERSION} 
   rm /opt/libaec-v${LIBAEC_VERSION}.tar.gz
 
@@ -492,7 +495,7 @@ echo "options(BioC_mirror = 'https://packagemanager.posit.co/bioconductor')" >> 
   make -j8
   ctest -j8
   make install
-  cd
+  cd /
   rm -rf /opt/mag
   rm -rf /opt/magsrc
   
@@ -504,7 +507,7 @@ echo "options(BioC_mirror = 'https://packagemanager.posit.co/bioconductor')" >> 
   LIBS="-lhdf5" ./configure --with-netcdf=/usr/local --with-eccodes=/usr/local
   make -j8
   make install
-  cd
+  cd /
   rm -rf /opt/cdo-${CDO_VERSION}
   rm -rf /opt/${CDO_FOLDER}
   rm /opt/cdo-${CDO_VERSION}.tar.gz 
@@ -542,7 +545,7 @@ echo "options(BioC_mirror = 'https://packagemanager.posit.co/bioconductor')" >> 
   export PATH=$OMPI_DIR/bin:$PATH
   export LD_LIBRARY_PATH=$OMPI_DIR/lib64:$LD_LIBRARY_PATH
   export PATH=/usr/local/cuda/bin:$PATH
-  cd
+  cd /
 
   alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
   alternatives --install /usr/bin/pip3 pip3 /usr/bin/pip3.12 1
