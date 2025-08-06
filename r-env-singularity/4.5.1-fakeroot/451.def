@@ -53,6 +53,9 @@ From: rockylinux:9.2
   451-rocky-py.txt /opt/pyreqs.txt
 
 %post
+## Dummies such that Apptainer fakeroot build succeeds
+  cp /usr/bin/true /usr/sbin/useradd
+  cp /usr/bin/true /usr/sbin/groupadd
 
 ## MAKE PAM-HELPER + USERCONF EXECUTABLE
 
@@ -348,8 +351,6 @@ echo "options(BioC_mirror = 'https://packagemanager.posit.co/bioconductor')" >> 
   R --slave -e 'install.packages("systemfonts", repos = "https://cran.rstudio.com/")'
 
 # locate
-  cp /usr/bin/true /usr/sbin/useradd
-  cp /usr/bin/true /usr/sbin/groupadd
   dnf -y install mlocate
   updatedb -l 0
 
