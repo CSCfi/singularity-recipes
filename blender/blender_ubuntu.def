@@ -1,21 +1,22 @@
 Bootstrap: localimage
-From: /scratch/project_2001659/santerit/baseimage/vgl_base_ubuntu.sif
+From: ../visualization/vgl_base_ubuntu.sif
 
-%environment
-	export VGL_APPLICATION=/opt/blender-3.6.0/blender
 %post
-	# When building with fakeroot without namespaces we cannot modify users or groups during the installation so we replace problematic binaries with dummies and hope that everything works
-	cp /usr/bin/true /usr/sbin/groupadd
-	cp /usr/bin/true /usr/sbin/useradd
+    # When building with fakeroot without namespaces we cannot modify users or groups during the installation so we replace problematic binaries with dummies and hope that everything works
+    cp /usr/bin/true /usr/sbin/groupadd
+    cp /usr/bin/true /usr/sbin/useradd
 
-	# Install blender dependencies, to figure out which libraries are required use ldd, read error messages and so on
-	apt-get install -y libxi6 libxrender1 libxkbcommon0 \
-			   libxkbcommon-x11-0 libsm6 libice6
+    # Install blender dependencies, to figure out which libraries are required use ldd, read error messages and so on
+    apt-get install -y libxi6 libxrender1 libxkbcommon0 \
+               libxkbcommon-x11-0 libsm6 libice6
 
-	# Install Blender binary itself
-	cd /opt
-	BLENDER_VERSION=3.6.0
-	wget https://ftp.halifax.rwth-aachen.de/blender/release/Blender$(echo "$BLENDER_VERSION" | cut -d. -f1,2)/blender-$BLENDER_VERSION-linux-x64.tar.xz
-	tar xf blender-$BLENDER_VERSION-linux-x64.tar.xz
-	mv blender-$BLENDER_VERSION-linux-x64 /opt/blender-$BLENDER_VERSION
-	rm blender-$BLENDER_VERSION-linux-x64.tar.xz
+    # Install Blender binary itself
+    cd /opt
+    BLENDER_VERSION=3.6.0
+    wget https://ftp.halifax.rwth-aachen.de/blender/release/Blender$(echo "$BLENDER_VERSION" | cut -d. -f1,2)/blender-$BLENDER_VERSION-linux-x64.tar.xz
+    tar xf blender-$BLENDER_VERSION-linux-x64.tar.xz
+    mv blender-$BLENDER_VERSION-linux-x64 /opt/blender-$BLENDER_VERSION
+    rm blender-$BLENDER_VERSION-linux-x64.tar.xz
+
+%runscript
+    vglrun_wrapper /opt/blender-3.6.0/blender
