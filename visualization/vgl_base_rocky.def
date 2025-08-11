@@ -17,3 +17,6 @@ From: rockylinux:9.3
     sh NVIDIA-Linux-x86_64-535.161.07.run -a -N --ui=none --no-kernel-module --no-x-check --skip-depmod --no-nvidia-modprobe
     vglserver_config +s +f +t +glx
     chmod u=rwx,go=rx /usr/bin/vglrun_wrapper
+
+%runscript
+    vglrun_wrapper "$@"

@@ -26,3 +26,6 @@ From: ubuntu:22.04
     rm virtualgl_${VGL_VERSION}_amd64.deb
 
     chmod u=rwx,go=rx /usr/bin/vglrun_wrapper
+
+%runscript
+    vglrun_wrapper "$@"
