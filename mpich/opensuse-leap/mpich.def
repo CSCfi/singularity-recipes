@@ -1,0 +1,106 @@
+Bootstrap: docker
+From: opensuse/leap:15.5
+
+%post
+    zypper --non-interactive refresh
+    zypper --non-interactive install \
+        automake \
+        autoconf \
+        libtool \
+        pkgconfig \
+        file \
+        gcc11 \
+        make \
+        gdb \
+        strace \
+        curl \
+        ca-certificates \
+        tar \
+        gzip \
+        git
+    zypper --non-interactive install \
+        gcc11-c++ \
+        gcc11-fortran
+
+    update-alternatives --install /usr/local/bin/cc cc /usr/bin/gcc-11 1
+    update-alternatives --install /usr/local/bin/gcc gcc /usr/bin/gcc-11 1
+    update-alternatives --install /usr/local/bin/gfortran gfortran /usr/bin/gfortran-11 1
+    update-alternatives --install /usr/local/bin/g++ g++ /usr/bin/g++-11 1
+
+    export CC=gcc
+    export FC=gfortran
+    export F77=gfortran
+    export CXX=g++
+
+    # Install lustre
+    LUSTRE_VERSION=2.15.0-RC2 && \
+    LUSTRE_URL=https://github.com/lustre/lustre-release/archive/refs/tags/${LUSTRE_VERSION}.tar.gz && \
+    mkdir -p /tmp/build && \
+    cd /tmp/build && \
+    curl --location --output lustre-release.tar.gz ${LUSTRE_URL} && \
+    tar -xf lustre-release.tar.gz && \
+    cd lustre-release-${LUSTRE_VERSION} && \
+    sh autogen.sh && \
+    ./configure \
+        --prefix=/usr/local \
+        --with-o2ib=no \
+        --disable-modules && \
+    export CPATH=$PWD/lnet/include/uapi/:$PWD/lustre/include/uapi/:$CPATH && \
+    make -j$(nproc) && \
+    make install && \
+    rm -rf /tmp/build
+
+    # Install libfabric
+    LIBFABRIC_VERSION=1.15.2 && \
+    LIBFABRIC_URL=https://github.com/ofiwg/libfabric/archive/refs/tags/v${LIBFABRIC_VERSION}.tar.gz && \
+    mkdir -p /tmp/build && \
+    cd /tmp/build && \
+    curl --location --output libfabric.tar.gz ${LIBFABRIC_URL} && \
+    tar -xf libfabric.tar.gz && \
+    cd libfabric-${LIBFABRIC_VERSION} && \
+    sh autogen.sh && \
+    ./configure \
+        --prefix=/usr/local && \
+    make -j$(nproc) && \
+    make install && \
+    rm -rf /tmp/build
+
+    # Install xpmem (master is on commit 61c39ef at the time of writing)
+    XPMEM_VERSION=master && \
+    mkdir -p /tmp/build && \
+    cd /tmp/build && \
+    git clone --depth 1 --branch ${XPMEM_VERSION} https://github.com/hpc/xpmem.git && \
+    cd xpmem && \
+    sh autogen.sh && \
+    ./configure \
+        --prefix=/usr/local \
+        --disable-kernel-module && \
+    make -j$(nproc) && \
+    make install && \
+    rm -rf /tmp/build
+
+
+    # Install mpich
+    MPICH_VERSION=4.1 && \
+    MPICH_URL=http://www.mpich.org/static/downloads/${MPICH_VERSION}/mpich-${MPICH_VERSION}.tar.gz && \
+    mkdir -p /tmp/build && \
+    cd /tmp/build && \
+    curl --location --output mpich.tar.gz ${MPICH_URL} && \
+    tar xf mpich.tar.gz && \
+    cd mpich-${MPICH_VERSION} && \
+    sed -i 's/FILE_SYSTEM="ufs nfs"/FILE_SYSTEM="ufs lustre"/g' src/mpi/romio/configure && \
+    ./configure \
+        --with-pm=hydra \
+        --enable-romio \
+        --without-slurm \
+        --with-ch4-shmmods=posix,xauto \
+        --with-xpmem=/usr/local \
+        --with-libfabric=/usr/local \
+        --with-device=ch4:ofi \
+        --disable-cxx \
+        --enable-fortran \
+        --prefix=/usr/local || \
+    { cat config.log ; exit 1 ;} && \
+    make -j$(nproc) && \
+    make install && \
+    rm -rf /tmp/build
