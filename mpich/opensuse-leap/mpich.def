@@ -2,6 +2,9 @@ Bootstrap: docker
 From: opensuse/leap:15.5
 
 %post
+    export LC_ALL=C.utf8
+    export LANG=C.utf8
+
     zypper --non-interactive refresh
     zypper --non-interactive install \
         automake \
@@ -17,7 +20,9 @@ From: opensuse/leap:15.5
         ca-certificates \
         tar \
         gzip \
-        git
+        git \
+        libnl3-200 \
+        libnl3-devel
     zypper --non-interactive install \
         gcc11-c++ \
         gcc11-fortran
@@ -78,7 +83,6 @@ From: opensuse/leap:15.5
     make -j$(nproc) && \
     make install && \
     rm -rf /tmp/build
-
 
     # Install mpich
     MPICH_VERSION=4.1 && \
