@@ -1,0 +1,13 @@
+diff --git a/tests/CMakeLists.txt b/tests/CMakeLists.txt
+index dfab76e02..5844f462b 100644
+--- a/tests/CMakeLists.txt
++++ b/tests/CMakeLists.txt
+@@ -45,6 +45,8 @@ include(../cmake/link_to_faiss_lib.cmake)
+ link_to_faiss_lib(faiss_test)
+ 
+ if (FAISS_ENABLE_PYTHON)
++  find_package(PythonLibs REQUIRED)
++  target_link_libraries(faiss_test PUBLIC ${PYTHON_LIBRARIES})
+   target_link_libraries(faiss_test PUBLIC faiss_example_external_module)
+ endif()
+ 
