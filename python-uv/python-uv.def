@@ -20,3 +20,4 @@ From: rockylinux/rockylinux:8.10
 
 %runscript
     . /opt/myenv/bin/activate
+    eval "$@"
