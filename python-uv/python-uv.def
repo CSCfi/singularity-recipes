@@ -17,3 +17,6 @@ From: rockylinux/rockylinux:8.10
     uv venv --python 3.12 /opt/myenv
     . /opt/myenv/bin/activate
     uv pip install numpy
+
+%runscript
+    . /opt/myenv/bin/activate
