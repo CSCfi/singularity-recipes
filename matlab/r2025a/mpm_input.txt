@@ -95,7 +95,7 @@ destinationFolder=/opt/matlab
 #product.DDS_Blockset
 #product.DSP_HDL_Toolbox
 #product.DSP_System_Toolbox
-#product.Data_Acquisition_Toolbox
+##product.Data_Acquisition_Toolbox
 #product.Database_Toolbox
 #product.Datafeed_Toolbox
 #product.Deep_Learning_HDL_Toolbox
@@ -129,7 +129,7 @@ product.MATLAB
 #product.Medical_Imaging_Toolbox
 #product.Mixed-Signal_Blockset
 #product.Model_Predictive_Control_Toolbox
-#product.Model-Based_Calibration_Toolbox
+##product.Model-Based_Calibration_Toolbox
 #product.Motor_Control_Blockset
 #product.Navigation_Toolbox
 #product.Optimization_Toolbox
@@ -182,7 +182,7 @@ product.MATLAB
 #product.Simulink_Report_Generator
 #product.Simulink_Test
 #product.SoC_Blockset
-#product.Spreadsheet_Link
+##product.Spreadsheet_Link
 #product.Stateflow
 #product.Statistics_and_Machine_Learning_Toolbox
 #product.Symbolic_Math_Toolbox
