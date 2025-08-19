@@ -1,0 +1,18 @@
+Bootstrap: localimage
+From: matlab.sif
+
+%arguments
+    MATLAB_PROXY_VERSION=0.23.1
+
+%post
+    dnf update -y
+    dnf install -y python39 python39-pip xorg-x11-server-Xvfb.x86_64
+    dnf clean all -y
+    python3 -m venv /opt/venv
+    VIRTUAL_ENV_DISABLE_PROMPT=1 . /opt/venv/bin/activate
+    python3 -m pip install --upgrade pip
+    python3 -m pip install --no-cache-dir "matlab-proxy=={{MATLAB_PROXY_VERSION}}"
+
+%environment
+    export PYTHONNOUSERSITE="1"
+    VIRTUAL_ENV_DISABLE_PROMPT=1 . /opt/venv/bin/activate
