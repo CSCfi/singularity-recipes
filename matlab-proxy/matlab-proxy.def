@@ -17,6 +17,3 @@ From: {{MATLAB_SIF}}
 %environment
     export PYTHONNOUSERSITE="1"
     export PATH=/opt/venv/bin:$PATH
-
-%runscript
-    matlab-proxy-app "$@"
