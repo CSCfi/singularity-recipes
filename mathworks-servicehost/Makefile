@@ -1,6 +1,6 @@
 VERSION := 2025.3.0.2
 ROOT_DIR := /opt/mathworksservicehost
-ZIP_FILE := managed_mathworksservicehost_$(VERSION)_package_glnxa64.zip
+ZIP_FILE := mathworksservicehost.zip
 SQFS_FILE := mathworksservicehost.sqfs
 
 .PHONY: all
