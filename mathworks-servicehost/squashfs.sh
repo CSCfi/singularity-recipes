@@ -8,5 +8,5 @@ unzip $ZIP_FILE -d $TMP_DIR/$VERSION
     echo "LatestDSInstallRoot ${ROOT_DIR}/${VERSION}";
     echo "DSLauncherExecutable ${ROOT_DIR}/${VERSION}/bin/glnxa64/MathWorksServiceHost";
 } >> $TMP_DIR/LatestInstall.info
-mksquashfs $TMP_DIR ${VERSION}.sqfs
+mksquashfs $TMP_DIR $SQFS_FILE
 rm -rf $TMP_DIR
