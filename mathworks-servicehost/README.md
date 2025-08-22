@@ -1,4 +1,4 @@
-Squashfs file of the MathWorks ServiceHost that can be bind mounted to the MATLAB container.
+Squashfs file of the [administered MathWorks Service Host](https://github.com/mathworks-ref-arch/administer-mathworks-service-host/) that can be used with the MATLAB container.
 
 Build:
 
