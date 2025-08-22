@@ -9,5 +9,8 @@ make
 Usage:
 
 ```bash
-apptainer exec --bind=$PWD/mathworksservicehost.sqfs:/opt/mathworksservicehost:image-src=/ --env=MATHWORKS_SERVICE_HOST_MANAGED_INSTALL_ROOT=/opt/mathworksservicehost matlab.sif matlab
+apptainer exec \
+    --bind=./mathworksservicehost.sqfs:/opt/mathworksservicehost:image-src=/ \
+    --env=MATHWORKS_SERVICE_HOST_MANAGED_INSTALL_ROOT=/opt/mathworksservicehost \
+    matlab.sif matlab
 ```
