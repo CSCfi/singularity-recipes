@@ -7,7 +7,7 @@ Change working directory:
 cd r2025a/rockylinux8
 ```
 
-Build the container:
+Build the container image:
 
 ```bash
 make
