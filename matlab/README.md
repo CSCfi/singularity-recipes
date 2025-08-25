@@ -16,5 +16,11 @@ make
 Run the container:
 
 ```bash
-apptainer exec --bind /run/user matlab.sif matlab
+apptainer exec --bind=/run/user matlab.sif matlab
+```
+
+Run with custom license file or license server:
+
+```bash
+apptainer exec --bind=/run/user --env="MLM_LICENSE_FILE=<license-file-or-server>" matlab.sif matlab
 ```

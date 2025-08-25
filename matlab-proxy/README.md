@@ -1,4 +1,4 @@
-Apptainer container which extends the MATLAB contains image with the [MATLAB Proxy](https://github.com/mathworks/matlab-proxy), an HTML-based web interface for MATLAB.
+Apptainer container which extends the MATLAB container image with the [MATLAB Proxy](https://github.com/mathworks/matlab-proxy), an HTML-based web interface for MATLAB.
 
 Change working directory:
 

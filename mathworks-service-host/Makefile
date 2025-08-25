@@ -12,6 +12,9 @@ $(ZIP_FILE):
 $(SQFS_FILE):
 	MSH_VERSION=$(MSH_VERSION) ZIP_FILE=$(ZIP_FILE) ROOT_DIR=$(ROOT_DIR) SQFS_FILE=$(SQFS_FILE) ./squashfs.sh
 
+latest-version:
+	@echo $(shell curl --silent https://raw.githubusercontent.com/mathworks-ref-arch/administer-mathworks-service-host/refs/heads/main/admin-scripts/linux/admin-controlled-installation/latest_release.txt)
+
 .PHONY: clean
 clean:
 	rm -f $(ZIP_FILE) $(SQFS_FILE)
