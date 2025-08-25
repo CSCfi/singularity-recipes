@@ -6,6 +6,7 @@ From: rockylinux/rockylinux:8.10
     curl -LsSf https://astral.sh/uv/install.sh | sh
 
     ROOT_DIR=/opt
+    export UV_LINK_MODE=copy
     export UV_CACHE_DIR=$ROOT_DIR/uv
     export UV_PYTHON_CACHE_DIR=$ROOT_DIR/uv
     export UV_PYTHON_BIN_DIR=$ROOT_DIR/uv
