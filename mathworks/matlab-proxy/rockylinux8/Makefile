@@ -2,7 +2,7 @@ TMPDIR ?= /tmp
 PREFIX := .
 
 MATLAB_SIF := ../../matlab/r2025a/rockylinux8/matlab.sif
-MATLAB_PROXY_SIF := $(PREFIX)/matlab-proxy.sif
+MATLAB_PROXY_SIF := $(PREFIX)/matlab.sif
 MATLAB_PROXY_DEF := matlab-proxy.def
 
 .PHONY: all
