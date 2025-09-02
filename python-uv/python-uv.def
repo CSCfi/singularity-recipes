@@ -2,22 +2,37 @@ Bootstrap: docker
 From: rockylinux/rockylinux:8.10
 
 %post
+    # Install uv
     export UV_INSTALL_DIR=/usr/local/bin
     curl -LsSf https://astral.sh/uv/install.sh | sh
 
-    ROOT_DIR=/opt
+    # Set environment variables for uv
     export UV_LINK_MODE=copy
-    export UV_CACHE_DIR=$ROOT_DIR/uv
-    export UV_PYTHON_CACHE_DIR=$ROOT_DIR/uv
-    export UV_PYTHON_BIN_DIR=$ROOT_DIR/uv
-    export UV_PYTHON_INSTALL_DIR=$ROOT_DIR/uv
-    export UV_TOOL_BIN_DIR=$ROOT_DIR/uv
-    export UV_TOOL_DIR=$ROOT_DIR/uv
+    export UV_CACHE_DIR=/opt/uv
+    export UV_PYTHON_CACHE_DIR=/opt/uv
+    export UV_PYTHON_BIN_DIR=/opt/uv
+    export UV_PYTHON_INSTALL_DIR=/opt/uv
+    export UV_TOOL_BIN_DIR=/opt/uv
+    export UV_TOOL_DIR=/opt/uv
 
+    # Install python
     uv python install 3.12
+
+    # Create and activate a virtual environment
     uv venv --python 3.12 /opt/myenv
     . /opt/myenv/bin/activate
-    uv pip install numpy
+
+    # Install python packages
+    # uv pip install ...
+
+%environment
+    export UV_LINK_MODE=copy
+    export UV_CACHE_DIR=/opt/uv
+    export UV_PYTHON_CACHE_DIR=/opt/uv
+    export UV_PYTHON_BIN_DIR=/opt/uv
+    export UV_PYTHON_INSTALL_DIR=/opt/uv
+    export UV_TOOL_BIN_DIR=/opt/uv
+    export UV_TOOL_DIR=/opt/uv
 
 %runscript
     . /opt/myenv/bin/activate
