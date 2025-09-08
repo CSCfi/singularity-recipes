@@ -12,7 +12,7 @@ From: {{MATLAB_SIF}}
     python3.11 -m venv /opt/venv
     export PATH=/opt/venv/bin:$PATH
     python3 -m pip install --upgrade pip
-    python3 -m pip install --no-cache-dir matlab-proxy==0.26.0
+    python3 -m pip install --no-cache-dir matlab-proxy==0.27.1
 
 %environment
     export PYTHONNOUSERSITE="1"
