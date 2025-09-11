@@ -1,8 +1,13 @@
 Bootstrap: docker
 From: rockylinux/rockylinux:8.10
 
+%arguments
+    PYTHON_VERSION=3.12
+
 %post
-    # Install uv
+    export PYTHON_VERSION={{PYTHON_VERSION}}
+
+    # Install uv, a python package manager
     export UV_INSTALL_DIR=/usr/local/bin
     curl -LsSf https://astral.sh/uv/install.sh | sh
 
@@ -16,16 +21,17 @@ From: rockylinux/rockylinux:8.10
     export UV_TOOL_DIR=/opt/uv
 
     # Install python
-    uv python install 3.12
+    uv python install "$PYTHON_VERSION"
 
     # Create and activate a virtual environment
-    uv venv --python 3.12 /opt/myenv
+    uv venv --python "$PYTHON_VERSION" /opt/myenv
     . /opt/myenv/bin/activate
 
     # Install python packages
     # uv pip install ...
 
 %environment
+    export PYTHON_VERSION={{PYTHON_VERSION}}
     export UV_LINK_MODE=copy
     export UV_CACHE_DIR=/opt/uv
     export UV_PYTHON_CACHE_DIR=/opt/uv
