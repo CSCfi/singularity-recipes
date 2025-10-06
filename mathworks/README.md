@@ -36,7 +36,7 @@ make --directory=matlab-proxy/rockylinux8
 Run the container:
 
 ```bash
-apptainer exec --bind /run/user matlab-proxy/rockylinux8/matlab-proxy-r2025a.sif matlab-proxy-app
+apptainer exec --bind=/run/user matlab-proxy/rockylinux8/matlab-proxy-r2025a.sif matlab-proxy-app
 ```
 
 ## Administered MathWorks Service Host
@@ -53,7 +53,8 @@ Usage:
 
 ```bash
 apptainer exec \
-    --bind=servicehost/mathworksservicehost.sqfs:/opt/mathworksservicehost:image-src=/ \
+    --bind=/run/user \
+    --bind=./servicehost/mathworksservicehost.sqfs:/opt/mathworksservicehost:image-src=/ \
     --env=MATHWORKS_SERVICE_HOST_MANAGED_INSTALL_ROOT=/opt/mathworksservicehost \
     matlab/r2025a/rockylinux8/matlab.sif matlab
 ```
