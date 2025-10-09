@@ -1,4 +1,4 @@
-MSH_VERSION := 2025.8.0.2
+MSH_VERSION := 2025.9.0.2
 ROOT_DIR := /opt/mathworksservicehost
 ZIP_FILE := mathworksservicehost.zip
 SQFS_FILE := mathworksservicehost.sqfs
