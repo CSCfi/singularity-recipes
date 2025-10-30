@@ -1,0 +1,7 @@
+#!/bin/bash
+export MPICH_GPU_SUPPORT_ENABLED=1
+siffile=$1; shift
+
+binds=$(singularity exec $siffile bash -c 'cat /etc/container-bind-*.list' | paste -s -d ',')
+
+singularity exec -B$binds $siffile "$@"

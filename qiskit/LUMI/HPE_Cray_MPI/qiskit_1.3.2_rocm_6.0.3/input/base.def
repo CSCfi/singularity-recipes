@@ -1,0 +1,315 @@
+Bootstrap: docker
+From: opensuse/leap:15.5
+
+%labels
+  Author Orian Louant <orian.louant@uliege.be>
+
+%post
+
+echo quit | openssl s_client -showcerts -servername "packages.local" \
+  -connect packages.local:443 > /usr/share/pki/trust/anchors/packages.pem
+/usr/sbin/update-ca-certificates
+
+for f in /usr/sbin/groupadd /usr/sbin/useradd /usr/bin/chgrp /usr/bin/chown /usr/bin/chkstat; do
+  mv $f $f.bak
+  ln -s /bin/true $f
+done
+
+zypper -n --no-gpg-checks addrepo https://download.opensuse.org/distribution/leap/15.5/repo/oss/ oss
+zypper -n --no-gpg-checks addrepo https://download.opensuse.org/repositories/devel:/languages:/perl/15.5/ perl
+zypper -n --no-gpg-checks addrepo https://download.opensuse.org/repositories/Education/15.5/ edu
+zypper -n --no-gpg-checks addrepo https://download.opensuse.org/repositories/editors/15.5/ editor
+
+zypper -n addrepo https://packages.local/repository/cos-base-3.0.1-2-sle-15.5 cos-base-3.0.1-2-sle-15.5
+zypper -n addrepo https://packages.local/repository/cpe cpe
+zypper -n addrepo https://packages.local/repository/csm-embedded csm-embedded
+zypper -n addrepo https://packages.local/repository/csm-noos csm-noos
+zypper -n addrepo https://packages.local/repository/csm-sle-\${releasever_major}sp\${releasever_minor} csm-sle
+zypper -n addrepo https://packages.local/repository/slingshot-host-software-2.1-cos-3.0-x86_64-sle15-sp5-cn-cassini slingshot-host-software-2.1-cos-3.0-x86_64-sle15-sp5-cn-cassini
+zypper -n addrepo https://packages.local/repository/slurm-2.0.9-23.2.7-sle-15.5 slurm-2.0.9-23.2.7-sle-15.5
+zypper -n addrepo https://packages.local/repository/sma-sle-15sp5 sma-sle-15sp5
+zypper -n addrepo https://packages.local/repository/uss-1.0.1-8-cos-base-3.0/ uss-1.0.1-8-cos-base-3.0
+zypper -n addrepo https://packages.local/repository/uss-1.0.1-8-csm-1.5 uss-1.0.1-8-csm-1.5
+zypper -n addrepo https://packages.local/repository/csc-rpms/sle15 csc-packages
+
+sed -i 's#gpgcheck=1#gpgcheck=0#g' /etc/zypp/repos.d/*.repo
+
+zypper -n --no-gpg-checks refresh
+
+zypper -n --no-gpg-checks --no-refresh install --no-recommends --oldpackage \
+  bash-completion \
+  cmake-full \
+  cpp12-12.3.0+git1204 \
+  cpp13-13.2.1+git7813 \
+  cpp7-7.5.0+r278197 \
+  curl \
+  emacs \
+  gcc12-12.3.0+git1204 \
+  gcc12-c++-12.3.0+git1204 \
+  gcc13-13.2.1+git7813 \
+  gcc13-c++-13.2.1+git7813 \
+  gcc7-7.5.0+r278197 \
+  gcc7-c++-7.5.0+r278197 \
+  git \
+  glibc-2.31 \
+  hostname-3.16 \
+  krb5-1.20.1 \
+  libatomic1-13.2.1+git7813 \
+  libbrotlicommon1-1.0.7 \
+  libbrotlidec1-1.0.7 \
+  libcom_err2-1.46.4 \
+  libcurl4-8.0.1 \
+  libgcc_s1-13.2.1+git7813 \
+  libgfortran4-7.5.0+r278197 \
+  libgfortran5-13.2.1+git7813 \
+  libgomp1-13.2.1+git7813 \
+  libidn2-0-2.2.0 \
+  libjansson4-2.14 \
+  libjitterentropy3-3.4.0 \
+  libjson-c3-0.13 \
+  libkeyutils1-1.6.3 \
+  libldap-2_4-2-2.4.46 \
+  libnghttp2-14-1.40.0 \
+  libnl3-200-3.3.0 \
+  libopenssl1_1-1.1.1l \
+  libpcre1-8.45 \
+  libpsl5-0.20.1 \
+  libsasl2-3-2.1.28 \
+  libselinux1-3.1 \
+  libssh4-0.9.8 \
+  libstdc++6-13.2.1+git7813 \
+  libstdc++6-devel-gcc13-13.2.1+git7813 \
+  libunistring2-0.9.10 \
+  libyaml-0-2-0.1.7 \
+  libz1-1.2.13 \
+  libzstd1-1.5.0 \
+  lua53-5.3.6 \
+  lua53-luafilesystem-1.8.0 \
+  lua53-luaposix-34.1.1 \
+  nano \
+  tcl-8.6.12 \
+  vim \
+  wget \
+  jq
+
+cat >/usr/bin/makebind <<EOFc0a2d175
+#!bin/bash
+
+opts=\$(getopt -o d:f:r: --long directory:,file:,runtime: -n 'makebind' -- "\$@")
+
+eval set -- "\$opts"
+
+dirbind="/etc/container-bind-dirs.list"
+filebind="/etc/container-bind-files.list"
+runtimebind="/etc/container-bind-runtime.list"
+
+while true; do
+  case "\$1" in
+    -d | --directory )
+      dir="\$2"; mkdir -p \$dir; echo \$dir >> \$dirbind
+      break ;;
+    -f | --file )
+      file="\$2"; mkdir -p \$(dirname \$file); touch \$file; echo \$file >> \$filebind
+      break ;;
+    -r | --runtime )
+      echo \$2 >> \$runtimebind
+      break ;;
+    -- ) shift; break ;;
+    * ) break ;;
+  esac
+done
+EOFc0a2d175
+
+chmod +x /usr/bin/makebind
+
+cat >/usr/bin/getappinfo <<EOFae257d24
+#!/bin/bash
+
+appname=\$1
+key=\$2
+
+labelsfile=\$(eval echo \\\$SCIF_APPLABELS_\$appname)
+if [[ -f \$labelsfile ]]; then
+  if [[  \$(jq -r "has(\"\$key\")" \$labelsfile) == "true" ]]; then
+    jq -r .\$key \$labelsfile
+    exit 0
+  fi
+fi
+
+exit 1
+EOFae257d24
+
+chmod +x /usr/bin/getappinfo
+
+makebind -d /pfs
+makebind -d /appl
+makebind -d /project
+makebind -d /flash
+makebind -d /users
+makebind -d /projappl
+makebind -d /scratch
+makebind -d /opt/AMD
+makebind -d /opt/cray
+makebind -d /opt/modulefiles
+makebind -d /etc/cray
+makebind -d /etc/cray-pe.d
+makebind -d /etc/alternatives/cray-xpmem
+
+makebind -f /usr/lib64/pkgconfig/cray-xpmem.pc
+makebind -f /usr/lib64/libcxi.so
+makebind -f /usr/lib64/libcxi.so.1
+makebind -f /usr/lib64/libcxi.so.1.5.0
+makebind -f /usr/lib64/liblustreapi.so
+makebind -f /usr/lib64/liblustreapi.so.1.0.0
+makebind -f /usr/lib64/liblustreapi.so.1
+
+# These binds are only used at runtime. The main motivation
+# to include these is for the users that need to use slurm
+# commands inside the container.
+#
+# Another benefit is that it allows to have the
+# username of the owner of the files properly displayed
+# instead of having numeric IDs
+makebind -r /etc/passwd
+makebind -r /usr/lib64/libmunge.so.2
+makebind -r /run/munge
+makebind -r /var/lib/misc
+makebind -r /var/spool
+makebind -r /etc/host.conf
+makebind -r /etc/hosts
+makebind -r /etc/nsswitch.conf
+makebind -r /etc/resolv.conf
+makebind -r /etc/ssl/openssl.cnf
+
+# Install Slurm if the following option is passed to singularity at build time:
+#
+#   --build-arg install_slurm=true
+#
+if [[ x{{ install_slurm }} == xtrue ]]; then
+  zypper -n --no-gpg-checks --no-refresh install --no-recommends slurm-23.02.7
+  makebind -r /etc/slurm
+fi
+
+cat >/usr/bin/getenvfile <<EOFd2319763
+#!/bin/bash
+
+if [[ ! -d /etc/container-init.d ]]; then
+  mkdir -p /etc/container-init.d
+  echo "/etc/container-init.d/01-\$1.sh"
+  exit
+fi
+
+highest=\$(cd /etc/container-init.d/; ls 2>/dev/null | awk -F'-' '{print \$1}' | sort -n | tail -1)
+prefix=\$(printf "%02d" \$((highest + 1)))
+
+echo "/etc/container-init.d/\$prefix-\$1.sh"
+EOFd2319763
+
+chmod +x /usr/bin/getenvfile
+
+mkdir -p $(dirname "/etc/container.bashrc")
+cat > "/etc/container.bashrc" <<EOF42e21e26
+  #!/bin/bash
+  
+  # Safegard: do not init if CrayPE and software stack are not binded
+  if [[ ! -d /appl/lumi/modules || ! -d /opt/cray/pe/lmod ]]; then
+    return 0
+  fi
+  
+  if test -z "\${CONTAINER_INIT_DONE:-}"; then
+  
+    unset MODULEPATH
+  
+    unset -f module
+    unset -f ml
+  
+    for prefix in LMOD __LMOD _ModuleTable CRAY PE LUMI EBROOT EBVERSION EBDEVEL; do
+      for var in \$(env | grep ^\$prefix | cut -d '=' -f1) ; do
+        unset "\$var"
+      done
+    done
+  
+    mod_paths="/opt/cray/pe/lmod/modulefiles/core                   \\
+               /opt/cray/pe/lmod/modulefiles/craype-targets/default \\
+               /appl/lumi/modules/SoftwareStack                     \\
+               /appl/lumi/modules/StyleModifiers                    \\
+               /appl/lumi/modules/init-LUMI-SoftwareStack           \\
+               /appl-container/mgmt/modules                         \\
+               /opt/cray/modulefiles"
+  
+    . /opt/cray/pe/lmod/lmod/init/bash
+  
+    MODULEPATH=\$(echo \${mod_paths} | sed "s_  *_:_g")
+  
+    export MODULEPATH
+  
+    init_module_list="craype-x86-rome    \\
+                      craype-network-ofi \\
+                      perftools-base     \\
+                      xpmem              \\
+                      PrgEnv-cray        \\
+                      init-lumi"
+  
+    LMOD_SYSTEM_DEFAULT_MODULES=\$(echo \${init_module_list} | sed "s_  *_:_g")
+    export LMOD_SYSTEM_DEFAULT_MODULES
+
+    LMOD_PACKAGE_PATH=/appl/lumi/LUMI-SoftwareStack/LMOD
+    LMOD_RC=/appl/lumi/LUMI-SoftwareStack/LMOD/lmodrc.lua
+    LMOD_ADMIN_FILE=/appl/lumi/LUMI-SoftwareStack/LMOD/admin.list
+    LMOD_AVAIL_STYLE='label:<PEhierarchy>:system'
+
+    export LMOD_PACKAGE_PATH LMOD_RC LMOD_ADMIN_FILE LMOD_AVAIL_STYLE
+  
+    module --initial_load --no_redirect restore
+    
+    export CONTAINER_INIT_DONE=1
+  fi
+  
+  if [[ -d /etc/container-init.d && -n "\$(ls -A /etc/container-init.d)" ]]; then
+    for file in /etc/container-init.d/*; do
+      . \$file
+    done
+  fi
+EOF42e21e26
+  
+mkdir -p $(dirname "/etc/ld.so.conf.d/cray-pe.conf")
+cat > "/etc/ld.so.conf.d/cray-pe.conf" <<EOF42e21e26
+/opt/cray/pe/lib64
+/opt/cray/pe/lib64/cce
+EOF42e21e26
+
+mkdir -p $(dirname "/etc/ld.so.conf.d/cray-xpmem.conf")
+cat > "/etc/ld.so.conf.d/cray-xpmem.conf" <<EOF42e21e26
+/opt/cray/xpmem/default/lib64
+EOF42e21e26
+
+%environment
+
+action="${0##*/}"
+file="/etc/container.bashrc"
+
+case "${action}" in
+shell)
+  if [ "${SINGULARITY_SHELL:-}" = "/bin/bash" ]; then
+    set -- --noprofile --rcfile $file
+  elif test -z "${SINGULARITY_SHELL:-}"; then
+    export SINGULARITY_SHELL=/bin/bash
+    set -- --noprofile --rcfile $file
+  fi
+;;
+exec)
+  export BASH_ENV="$file"
+  set -- /bin/bash --noprofile --norc -c "exec $(/usr/bin/printf " %q" "$@")"
+;;
+run)
+  if test -x "/.singularity.d/runscript" || test -n "${SINGULARITY_APPNAME:-}"; then
+    function exec {
+      export BASH_ENV="$file"
+      unset -f exec
+      exec /bin/bash --noprofile --norc -c "exec $(/usr/bin/printf " %q" "$@")"
+    }
+  else
+    set -- /bin/bash --noprofile --rcfile $file
+  fi
+esac
+

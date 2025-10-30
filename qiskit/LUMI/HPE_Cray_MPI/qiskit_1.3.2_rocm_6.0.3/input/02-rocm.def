@@ -1,0 +1,34 @@
+Bootstrap: localimage
+From: $PATH_TO_REPO/singularity-recipes/qiskit/LUMI/HPE_Cray_MPI/qiskit_1.3.2_rocm_6.0.3/output/01-python.sif
+
+%labels
+  Author Orian Louant <orian.louant@uliege.be>
+
+%post
+export MAKEFLAGS="-j"
+
+%appinstall rocm
+
+zypper -n --no-gpg-checks install https://repo.radeon.com/amdgpu-install/6.0.3/sle/15.5/amdgpu-install-6.0.60003-1.noarch.rpm
+zypper -n --no-gpg-checks install rocm
+
+cat >$(getenvfile) <<EOF
+export ROCM_PATH=/opt/rocm
+EOF
+
+cat >/etc/ld.so.conf.d/30-rocm-llvm.conf <<EOF
+/opt/rocm/lib/llvm/lib
+EOF
+
+ldconfig
+
+%applabels rocm
+
+VERSION       6.0.3
+VERSION_MAJOR 6
+VERSION_MINOR 0
+VERSION_PATCH 3
+
+%apphelp rocm
+
+Dummy application for ROCm

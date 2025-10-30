@@ -1,0 +1,58 @@
+Bootstrap: localimage
+From: $PATH_TO_REPO/singularity-recipes/qiskit/LUMI/HPE_Cray_MPI/qiskit_1.3.2_rocm_6.0.3/output/base.sif
+
+%labels
+  Author Orian Louant <orian.louant@uliege.be>
+
+%post
+  # Use as many available cores for compilation
+  export MAKEFLAGS="-j"
+
+%appinstall python
+
+zypper -n --no-gpg-checks install python311 python311-pip python311-setuptools python311-devel
+
+update-alternatives --install /usr/bin/python python /usr/bin/python3.11 3
+update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 3
+update-alternatives --install /usr/bin/pip pip /usr/bin/pip3.11 3
+update-alternatives --install /usr/bin/pip3 pip3 /usr/bin/pip3.11 3
+
+cat >$(getenvfile) <<EOF
+export PYTHON_VERSION=3.11.10
+export PYTHON_VERSION_SHORT=3.11
+# Prevent packages installed in the home directory
+# to leak in the container
+export PYTHONNOUSERSITE=1
+EOF
+
+%apprun python
+
+python "$@"
+
+%apphelp python
+
+Run the Python 3.11 interpreter
+
+%applabels python
+
+VERSION       3.11.10
+VERSION_SHORT 3.11
+VERSION_MAJOR 3
+VERSION_MINOR 11
+VERSION_PATCH 10
+
+%apprun pip
+
+pip "$@"
+
+%apphelp pip
+
+Run pip
+
+%applabels pip
+
+VERSION       22.3.1
+VERSION_SHORT 22.3
+VERSION_MAJOR 22
+VERSION_MINOR 3
+VERSION_PATCH 1
