@@ -1,0 +1,38 @@
+Bootstrap: docker
+From: rockylinux/rockylinux:8.10
+
+%files
+    base-dependencies.txt /opt/base-dependencies.txt
+    mpm_input.txt /opt/mpm_input.txt
+
+%post
+    # Add fake commands
+    cp /usr/bin/true /usr/sbin/useradd
+    cp /usr/bin/true /usr/sbin/groupadd
+
+    # Build environment
+    export LANG=C
+    export TZ="Etc/UTC"
+
+    # Install dependencies
+    dnf update -y
+    dnf install -y $(cat /opt/base-dependencies.txt)
+    dnf clean all -y
+
+    [ -s /etc/machine-id ] || dbus-uuidgen > /etc/machine-id
+    [ -d /usr/share/X11/xkb ] || mkdir -p /usr/share/X11/xkb
+
+    # Install MATLAB
+    mkdir -p /opt/build
+    cd /opt/build
+    curl --location --remote-name https://www.mathworks.com/mpm/glnxa64/mpm
+    chmod u+x mpm
+    ./mpm install --inputfile /opt/mpm_input.txt
+    ln -sf /opt/matlab/bin/matlab /usr/local/bin/matlab
+    ln -sf /opt/matlab/bin/mex /usr/local/bin/mex
+    ln -sf /opt/matlab/bin/worker /usr/local/bin/worker
+    cd /
+    rm -r /opt/build
+
+%environment
+    export TZ="Etc/UTC"
