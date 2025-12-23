@@ -71,7 +71,7 @@ transpiled_circuit = transpile(circuit, sim, coupling_map=coupling_map, optimiza
 
 ## RUN THE SIMULATION -------------------------------------------------------------------------------------------------------------
 print(f"Simulation starts in {time.time() - start_time}")
-result_statevec = sim.run(transpiled_circuit, shots=num_shots, seed_simulator=12345, blocking_enabled=use_cache_blocking, blocking_qubits=num_blocking_qubits, max_parallel_experiments=num_parallel_experiments).result()
+result_statevec = sim.run(transpiled_circuit, shots=num_shots, seed_simulator=12345, blocking_enable=use_cache_blocking, blocking_qubits=num_blocking_qubits, max_parallel_experiments=num_parallel_experiments).result()
 print(f"Simulation ready in {time.time() - start_time}")
 
 
