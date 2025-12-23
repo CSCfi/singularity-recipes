@@ -1,0 +1,373 @@
+Bootstrap: docker
+From: rockylinux/rockylinux:9.6
+
+%labels
+  Author Mats Sjöberg <mats.sjoberg@csc.fi>
+
+%files
+  requirements_pytorch_2.9.txt /opt/requirements.txt
+
+%post
+  #############################################################################
+  # Setting versions
+  #############################################################################
+
+  # Versions for basic packages coming from Rocky Linux
+  PYVER=3.12
+  GCC_TOOLSET=14
+  NODEJS_VERSION=24
+
+  # Versions for NVIDIA and CUDA packages
+  NVIDIA_DRIVER=575
+  CUDA_VERSION=12.9
+  CUDNN_VERSION=9
+  CUDNN_EXACT_VERSION=9.1.0.70-1
+  NCCL_VERSION=2.28.9-1
+
+  # PyTorch versions
+  PYTORCH_VERSION=2.9.1
+  PYTORCH_CUDA_VERSION=${CUDA_VERSION/./}
+  TORCHVISION_VERSION=0.24.1
+  TORCHAUDIO_VERSION=2.9.1
+
+  # Vim - curl -s "https://api.github.com/repos/vim/vim/tags?per_page=1" | jq -r '.[0].name'
+  VIMVER=v9.1.1997
+
+  # OpenCV, https://github.com/opencv/opencv/releases
+  OPENCV_VER=4.12.0
+
+  # vLLM - curl -s https://api.github.com/repos/vllm-project/vllm/releases/latest | jq -r .tag_name | sed 's/^v//'
+  VLLM_VERSION=0.13.0
+
+  # FAISS
+  FAISS_VERSION=1.13.1
+
+  # Compilation flags
+  export TORCH_CUDA_ARCH_LIST="7.0;8.0"
+  export CMAKE_CUDA_ARCHITECTURES="70;80"
+
+  export MAKEFLAGS="-j$(nproc)"
+  export MAX_JOBS="$(nproc)"
+
+  
+  #############################################################################
+  # Basic Rocky packages
+  #############################################################################
+
+  # Enable dnf plugins like config-manager
+  dnf install -y dnf-plugins-core
+  dnf config-manager --set-enabled crb
+
+  # Upgrade packages to most recent versions
+  dnf -y upgrade
+
+  # Install additional packages
+
+  # Basic stuff
+  dnf -y install which patch python${PYVER}-devel python${PYVER}-pip git wget libsndfile \
+      ncurses-devel libxkbcommon-x11 \
+      libxml2-devel libxslt-devel unzip \
+      bzip2-devel graphviz sqlite-devel openssl-devel \
+      numactl numactl-devel \
+
+  # Packages from EPEL
+  dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+  dnf -y install turbojpeg turbojpeg-devel openblas-devel sparsehash-devel
+
+  # Packages from RPM Fusion
+  dnf install -y https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-9.noarch.rpm
+  dnf -y install ffmpeg
+
+  # Install newer gcc
+  dnf -y install gcc-toolset-${GCC_TOOLSET}
+  source /opt/rh/gcc-toolset-${GCC_TOOLSET}/enable
+  echo "source /opt/rh/gcc-toolset-${GCC_TOOLSET}/enable" >> $APPTAINER_ENVIRONMENT
+
+  # Install newer nodejs - these can be listed with "dnf module list nodejs"
+  dnf module -y install nodejs:${NODEJS_VERSION}/common
+
+  # Set $PYVER to default Python, also make "python" and "pip" commands work
+  alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYVER} 1
+  alternatives --install /usr/bin/python python /usr/bin/python${PYVER} 1
+  alternatives --install /usr/bin/pip3 pip3 /usr/bin/pip${PYVER} 1
+  alternatives --install /usr/bin/pip pip /usr/bin/pip${PYVER} 1
+
+  # Upgrade pip
+  pip install --upgrade pip
+
+  # This is a hack to make sure that /usr/local/lib* paths are always
+  # included, even with PYTHONNOUSERSITE="TRUE" set
+  echo "/usr/local/lib/python${PYVER}/site-packages" > /usr/lib/python${PYVER}/site-packages/usr-local.pth
+  echo "/usr/local/lib64/python${PYVER}/site-packages" >> /usr/lib/python${PYVER}/site-packages/usr-local.pth
+
+
+  #############################################################################
+  # MPI and Mellanox
+  #############################################################################
+
+  # Install Mellanox stuff and OpenMPI
+  cd /opt
+  wget https://www.mellanox.com/downloads/ofed/RPM-GPG-KEY-Mellanox
+  rpm --import RPM-GPG-KEY-Mellanox
+  rm RPM-GPG-KEY-Mellanox
+
+  # MOFED
+  cd /etc/yum.repos.d/
+  wget https://linux.mellanox.com/public/repo/mlnx_ofed/latest-23.10/rhel9.4/mellanox_mlnx_ofed.repo
+  
+  openmpi_package=`dnf --repo mlnx_ofed* whatprovides openmpi | grep -B 1 mlnx_ofed | grep -v Repo |  awk '{print $1;}' | sort | tail -n 1`
+  rdmacore_package=`dnf --repo mlnx_ofed* whatprovides rdma-core | grep -B 1 mlnx_ofed | grep -v Repo |  awk '{print $1;}' | sort | tail -n 1`
+  ucxib_package=`dnf --repo mlnx_ofed* whatprovides ucx-ib | grep -B 1 mlnx_ofed | grep -v Repo |  awk '{print $1;}' | sort | tail -n 1`
+  dnf -y install $openmpi_package $rdmacore_package $ucxib_package
+
+  # Settings for compiling stuff with MPI
+  export OMPI_DIR=$(ls -1d /usr/mpi/gcc/openmpi-4.* | head -n1)
+  export PATH=$OMPI_DIR/bin:$PATH
+  export LD_LIBRARY_PATH=$OMPI_DIR/lib64:$LD_LIBRARY_PATH
+
+  echo "export PATH=$OMPI_DIR/bin:\$PATH" >> $APPTAINER_ENVIRONMENT
+  echo "export LD_LIBRARY_PATH=$OMPI_DIR/lib64:\$LD_LIBRARY_PATH" >> $APPTAINER_ENVIRONMENT
+  
+  
+  #############################################################################
+  # CUDA
+  #############################################################################
+
+  # Install CUDA, CUDNN, NCCL
+  dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel9/x86_64/cuda-rhel9.repo
+  dnf module install -y nvidia-driver:${NVIDIA_DRIVER}
+
+  dnf -y install cuda-${CUDA_VERSION/./-} \
+      libcudnn${CUDNN_VERSION}{,-devel}-cuda-${CUDA_VERSION/.*/}-${CUDNN_EXACT_VERSION} libcusparselt0 \
+      libnccl{,-devel,-static}-${NCCL_VERSION}+cuda${CUDA_VERSION} libnvshmem3-cuda-${CUDA_VERSION/.*/}
+  
+  # Settings for compiling stuff with CUDA
+  export PATH=/usr/local/cuda/bin:$PATH
+  export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+
+  echo "export PATH=/usr/local/cuda/bin:\$PATH" >> $APPTAINER_ENVIRONMENT
+  echo "export LD_LIBRARY_PATH=/usr/local/cuda/lib64:\$LD_LIBRARY_PATH" >> $APPTAINER_ENVIRONMENT
+
+
+  #############################################################################
+  # PyTorch and python packages from pip
+  #############################################################################
+
+  # Install Python packages, including PyTorch
+  pip install wheel
+  pip install torch==${PYTORCH_VERSION} torchvision==${TORCHVISION_VERSION} torchaudio==${TORCHAUDIO_VERSION} \
+      --extra-index-url https://download.pytorch.org/whl/cu${PYTORCH_CUDA_VERSION} \
+      -r /opt/requirements.txt
+
+  # Due to bug of not finding libnvshmem_host.so.3
+  # export LD_LIBRARY_PATH=/usr/local/lib/python${PYVER}/site-packages/nvidia/nvshmem/lib/:$LD_LIBRARY_PATH
+  # echo "export LD_LIBRARY_PATH=/usr/local/lib/python${PYVER}/site-packages/nvidia/nvshmem/lib/:\$LD_LIBRARY_PATH" >> $APPTAINER_ENVIRONMENT
+
+  # Jupyter stuff
+  pip install jupyterlab-dash
+  /usr/local/bin/jupyter lab build
+
+  # To speed up compilations via pip
+  pip install ninja
+
+  # Fix issue that torch is in lib64 but nvidia packages in lib,
+  # causing rpaths to not work
+  if [ -d /usr/local/lib/python${PYVER}/site-packages/nvidia -a \
+       -d /usr/local/lib64/python${PYVER}/site-packages/torch ]
+  then
+      cd /usr/local/lib64/python${PYVER}/site-packages/
+      ln -s /usr/local/lib/python${PYVER}/site-packages/nvidia .
+  fi
+  
+
+  #############################################################################
+  # Flash attention
+  #############################################################################
+
+  MAX_JOBS=4 pip install flash-attn --no-build-isolation -v --no-cache-dir
+  
+  # #MAX_JOBS=4 pip install flash-attn --no-build-isolation --force-reinstall --no-deps
+  # # Most recent builds need too new glibc, need to compile our own...
+  # pip uninstall -y flash-attention
+  # cd /opt
+  # git clone https://github.com/Dao-AILab/flash-attention -b v2.8.0.post2
+  # cd flash-attention
+  # MAX_JOBS=4 python3 setup.py install
+  
+  # cd /opt
+  # rm -rf flash-attention
+  
+  
+  #############################################################################
+  # apex - legacy, but some code still uses it
+  #############################################################################
+
+  # # Install apex, as some legacy code still uses it
+  # export MAX_JOBS="$(nproc)"
+  # export TORCH_CUDA_ARCH_LIST="7.0;8.0"
+  # pip install --upgrade setuptools   # maybe fixes issue where it is just installing Python part of apex, not compiling the C parts
+  # pip install ninja
+  
+  # cd /opt
+  # git clone https://github.com/NVIDIA/apex
+  # cd apex
+  # NVCC_APPEND_FLAGS="--threads 4" \
+  #                  pip install -v --disable-pip-version-check --no-cache-dir --no-build-isolation \
+  #                  --config-settings "--build-option=--cpp_ext --cuda_ext --parallel 8" ./
+  # cd
+  # rm -rf /opt/apex
+
+
+  #############################################################################
+  # PyTorch geometric and related libraries
+  #############################################################################
+
+  #   -- USE_CUDNN is set to 0. Compiling without cuDNN support                                 
+  # -- USE_CUSPARSELT is set to 0. Compiling without cuSPARSELt support                                                                                                                    
+  # -- USE_CUDSS is set to 0. Compiling without cuDSS support                                 
+  # -- USE_CUFILE is set to 0. Compiling without cuFile support                               
+
+  PIP_COMPILE_FLAGS="--verbose --no-build-isolation --no-cache-dir"
+
+  pip install git+https://github.com/pyg-team/pyg-lib.git $PIP_COMPILE_FLAGS
+  pip install $PIP_COMPILE_FLAGS torch_scatter
+  pip install $PIP_COMPILE_FLAGS torch_sparse
+  pip install $PIP_COMPILE_FLAGS torch_cluster
+  pip install $PIP_COMPILE_FLAGS torch_spline_conv
+  
+  # We need to compile pyg_lib due to GLIBC problem with rockylinux:8.8 and 8.9 at least
+  # STATUS 1.4.2025: pyg still doesn't support PyTorch 2.6, skipping
+  #
+  # TORCH_CUDA_ARCH_LIST="7.0;8.0" pip install git+https://github.com/pyg-team/pyg-lib.git
+  # pip install torch_scatter torch_sparse torch_cluster torch_spline_conv \
+  #     -f https://data.pyg.org/whl/torch-2.5.1+cu124.html
+
+
+  #############################################################################
+  # VIM with Python-support
+  #############################################################################
+
+  # It has to be done like this as default vim-enhanced is compiled
+  # against python3.6 version
+
+  cd /opt/
+  wget https://github.com/vim/vim/archive/refs/tags/${VIMVER}.tar.gz
+  tar xf ${VIMVER}.tar.gz
+  cd vim-${VIMVER/v/}
+  ./configure --enable-python3interp=yes --prefix=/opt/vim --enable-fail-if-missing && make -j && make install
+  cd
+  rm -rf /opt/vim-${VIMVER/v/} /opt/v${VIMVER}.tar.gz
+
+  echo "export PATH=/opt/vim/bin:\$PATH" >> $APPTAINER_ENVIRONMENT
+
+  
+  #############################################################################
+  # OpenCV + ffcv
+  #############################################################################
+
+  cd /opt/
+  wget https://github.com/opencv/opencv/archive/${OPENCV_VER}.zip
+  unzip ${OPENCV_VER}.zip
+  cd opencv-${OPENCV_VER}
+  mkdir build; cd build
+  cmake -DOPENCV_GENERATE_PKGCONFIG=ON ..
+  # Note: make -j10 runs out of memory on my cPouta instance
+  make -j6 && make install
+  cd
+  rm -rf /opt/${OPENCV_VER}.zip /opt/opencv-${OPENCV_VER}
+
+  export LD_LIBRARY_PATH=/usr/local/lib64:$LD_LIBRARY_PATH
+  export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/lib64/pkgconfig
+  
+  echo "export LD_LIBRARY_PATH=/usr/local/lib64:\$LD_LIBRARY_PATH" >> $APPTAINER_ENVIRONMENT
+  echo "export PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig:\$PKG_CONFIG_PATH" >> $APPTAINER_ENVIRONMENT
+  
+  pip3 install ffcv  # needs opencv install (above)
+
+
+  #############################################################################
+  # DeepSpeed
+  #############################################################################
+  
+  # Install DeepSpeed
+  dnf -y install libaio-devel
+
+  pip install deepspeed-kernels
+
+  # Let's try and see if this works, LOL - FIXME
+  pip install deepspeed
+
+  #DS_BUILD_OPS=1 pip install deepspeed --global-option="build_ext" --global-option="-j8" --no-cache-dir
+  # DS_BUILD_OPS=1 pip install deepspeed --no-build-isolation --verbose \
+  #                --config-setting="--build-option=build_ext" --config-setting="--build-option=-j8"
+
+
+  # # Sometimes pip install doesn't work, here's how to build DeepSpeed from source...
+  # cd /opt
+  # git clone https://github.com/deepspeedai/DeepSpeed/
+  # cd DeepSpeed/
+  # export TORCH_CUDA_ARCH_LIST="7.0;8.0"
+  # pip install -v .
+  # cd /opt
+  # rm -rf DeepSpeed
+  
+  sed -i 's/hostname -I/hostname -s/g' /usr/local/lib*/python${PYVER}/site-packages/deepspeed/comm/comm.py
+
+
+  #############################################################################
+  # vLLM
+  #############################################################################
+
+  cd /opt
+  git clone https://github.com/vllm-project/vllm.git -b v${VLLM_VERSION}
+  cd vllm
+  python use_existing_torch.py
+  pip install -r requirements/build.txt
+  pip install --no-build-isolation --verbose .
+
+  cd /opt
+  rm -rf vllm
+
+#   ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
+# outlines 0.1.11 requires outlines_core==0.1.26, but you have outlines-core 0.2.11 which is incompatible.
+# sglang 0.5.6.post2 requires llguidance<0.8.0,>=0.7.11, but you have llguidance 1.3.0 which is incompatible.
+# FIXME try removing sglang
+
+
+  #############################################################################
+  # FAISS
+  #############################################################################
+
+  dnf -y install swig gflags-devel
+
+  cd /opt
+  git clone --branch v$FAISS_VERSION https://github.com/facebookresearch/faiss
+
+  cd faiss
+  cmake -B build . -DFAISS_ENABLE_GPU=ON -DFAISS_ENABLE_PYTHON=ON \
+        -DBUILD_TESTING=OFF -DFAISS_OPT_LEVEL=generic -DFAISS_ENABLE_C_API=ON \
+        -DBUILD_SHARED_LIBS=ON -DCMAKE_CUDA_ARCHITECTURES=$CMAKE_CUDA_ARCHITECTURES -DCMAKE_BUILD_TYPE=Release
+  make -C build faiss
+
+  make -C build swigfaiss
+  cd build/faiss/python
+  pip install .
+
+  cd /opt/faiss
+  make -C build install
+  cd /opt
+  rm -rf faiss
+
+  echo "export LD_LIBRARY_PATH=/usr/local/lib/python${PYVER}/site-packages/faiss/:\$LD_LIBRARY_PATH" >> $APPTAINER_ENVIRONMENT
+
+
+  #############################################################################
+  # Cleanup
+  #############################################################################
+
+  dnf clean all
+
+
+%environment
+  export LIBRARY_PATH=  # added 8.1.2025 as modules in host may set this which confuses compilations
+  export KERAS_BACKEND="torch"
