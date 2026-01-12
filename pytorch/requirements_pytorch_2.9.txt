@@ -90,3 +90,5 @@ psutil
 wandb
 litgpt[all]
 torchgeo
+ultralytics
+sahi
