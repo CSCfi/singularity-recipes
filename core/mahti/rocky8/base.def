@@ -1,0 +1,8 @@
+Bootstrap: docker
+From: rockylinux/rockylinux:8.10
+
+%post
+    cp /usr/bin/true /usr/sbin/useradd
+    cp /usr/bin/true /usr/sbin/groupadd
+    dnf install -y unbound-libs
+    dnf update -y --exclude=unbound-libs
