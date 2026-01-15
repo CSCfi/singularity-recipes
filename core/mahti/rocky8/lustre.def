@@ -1,0 +1,7 @@
+Bootstrap: localimage
+From: core.sif
+
+%post
+    # Install packages
+    dnf install -y --disableplugin=subscription-manager \
+        lustre-client
