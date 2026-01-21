@@ -1,0 +1,6 @@
+Bootstrap: localimage
+From: core.sif
+
+%files
+    /scratch/project_2014802/test/v1.1.0/core/gcc152_env
+    /usr/lib64/liblustreapi.so.1.0.0 /usr/lib64/liblustreapi.so.1
