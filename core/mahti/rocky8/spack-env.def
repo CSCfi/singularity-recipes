@@ -1,5 +1,7 @@
 Bootstrap: localimage
 From: core.sif
 
-%files
-    /scratch/project_2014802/test/v1.1.0/core/gcc152_env
+%setup
+    # Preserve symbolic links (do NOT dereference)
+    mkdir -p "$APPTAINER_ROOTFS/scratch/project_2014802/test/v1.1.0/core/gcc152_env"
+    cp -r -d /scratch/project_2014802/test/v1.1.0/core/gcc152_env "$APPTAINER_ROOTFS/scratch/project_2014802/test/v1.1.0/core/gcc152_env"
