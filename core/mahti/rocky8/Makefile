@@ -7,7 +7,7 @@ BASE_DEF := base.def
 CORE_SIF := $(PREFIX)/core.sif
 CORE_DEF := core.def
 
-SPACK_ENV_SIF := (PREFIX)/spack-env.sif
+SPACK_ENV_SIF := $(PREFIX)/spack-env.sif
 SPACK_ENV_DEF := spack-env.def
 
 OSU_SIF := $(PREFIX)/osu.sif

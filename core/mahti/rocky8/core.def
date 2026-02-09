@@ -47,3 +47,5 @@ From: base.sif
         p11-kit-devel-0.23.22 \
         hwloc-2.2.0 \
         hwloc-devel-2.2.0
+
+    # TODO: disable repos
