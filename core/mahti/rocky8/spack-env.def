@@ -3,5 +3,5 @@ From: core.sif
 
 %setup
     # Preserve symbolic links (do NOT dereference)
-    mkdir -p "$APPTAINER_ROOTFS/scratch/project_2014802/test/v1.1.0/core/gcc152_env"
+    mkdir -p "$APPTAINER_ROOTFS/scratch/project_2014802/test/v1.1.0/core"
     cp -r -d /scratch/project_2014802/test/v1.1.0/core/gcc152_env "$APPTAINER_ROOTFS/scratch/project_2014802/test/v1.1.0/core/gcc152_env"
