@@ -1,6 +1,13 @@
 Bootstrap: localimage
 From: base.sif
 
+%setup
+    # Copy some libraries from the host needed by Spack installations.
+    cp -d /usr/lib64/liblustreapi.a $APPTAINER_ROOTFS/usr/lib64/liblustreapi.a
+    cp -d /usr/lib64/liblustreapi.so $APPTAINER_ROOTFS/usr/lib64/liblustreapi.so
+    cp -d /usr/lib64/liblustreapi.so.1 $APPTAINER_ROOTFS/usr/lib64/liblustreapi.so.1
+    cp -d /usr/lib64/liblustreapi.so.1.0.0 $APPTAINER_ROOTFS/usr/lib64/liblustreapi.so.1.0.0
+
 %files
     # Include repositories from host
     /etc/yum.repos.d/BaseOS_Erratas.repo
@@ -16,17 +23,9 @@ From: base.sif
     # Include repository gpg keys
     /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-    # Necessary library for Spack installed MPI
-    /usr/lib64/liblustreapi.a
-    /usr/lib64/liblustreapi.so.1.0.0
-
 %post
     # Ensure read permission
     chmod a+r /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
-
-    # Symlinks
-    ln -s liblustreapi.so.1.0.0 /usr/lib64/liblustreapi.so
-    ln -s liblustreapi.so.1.0.0 /usr/lib64/liblustreapi.so.1
 
     # Install packages
     dnf install -y \
@@ -48,4 +47,13 @@ From: base.sif
         hwloc-2.2.0 \
         hwloc-devel-2.2.0
 
-    # TODO: disable repos
+    # Disable repos
+    sed -i 's/^enabled=1/enabled=0/' /etc/yum.repos.d/BaseOS_Erratas.repo
+    sed -i 's/^enabled=1/enabled=0/' /etc/yum.repos.d/OS_Codeready_builder.repo
+    sed -i 's/^enabled=1/enabled=0/' /etc/yum.repos.d/CSC_general.repo
+    sed -i 's/^enabled=1/enabled=0/' /etc/yum.repos.d/CSC_gpu_addons.repo
+    sed -i 's/^enabled=1/enabled=0/' /etc/yum.repos.d/CSC_lustre.repo
+    sed -i 's/^enabled=1/enabled=0/' /etc/yum.repos.d/CSC_slurm.repo
+    sed -i 's/^enabled=1/enabled=0/' /etc/yum.repos.d/EPEL.repo
+    sed -i 's/^enabled=1/enabled=0/' /etc/yum.repos.d/MLNX_OFED.repo
+    sed -i 's/^enabled=1/enabled=0/' /etc/yum.repos.d/NVIDIA_CUDA.repo
