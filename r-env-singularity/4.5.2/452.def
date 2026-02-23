@@ -304,6 +304,16 @@ echo "options(BioC_mirror = 'https://packagemanager.posit.co/bioconductor')" >> 
   R --slave -e 'install.packages("rmdshower", repos = "https://cran.rstudio.com/")'
   R --slave -e 'install.packages("xaringan", repos = "https://cran.rstudio.com/")'
 
+  # R packages for Jupyter (to allow installing kernel spec for all users below)
+
+  R --slave -e 'install.packages("repr", repos = "https://cran.rstudio.com/")'
+  R --slave -e 'install.packages("IRdisplay", repos = "https://cran.rstudio.com/")'
+  R --slave -e 'install.packages("pbdZMQ", repos = "https://cran.rstudio.com/")'
+  R --slave -e 'install.packages("IRkernel", repos = "https://cran.rstudio.com/")'
+
+  # install kernel spec so that Jupyter visible for all users
+  R --slave -e 'IRkernel::installspec(user = FALSE)'
+
   # Further R packages
   # (Selected packages that ran into errors when installing outside container)
 
