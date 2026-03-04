@@ -184,15 +184,15 @@ From: rockylinux:9.2
 	-lmkl_core -lgomp	        \
 	-lpthread -lm -ldl"
 
-# JDK 25
+# JDK 21
 # https://jdk.java.net/archive/
-  wget https://download.java.net/java/GA/jdk25/bd75d5f9689641da8e1daabeccb5528b/36/GPL/openjdk-25_linux-x64_bin.tar.gz
-  tar -zxvf openjdk-25_linux-x64_bin.tar.gz
-  mv jdk-25/ /usr/local/
-  export JAVA_HOME=/usr/local/jdk-25
+  wget https://download.java.net/java/GA/jdk21/fd2272bbf8e04c3dbaee13770090416c/35/GPL/openjdk-21_linux-x64_bin.tar.gz
+  tar -zxvf openjdk-21_linux-x64_bin.tar.gz
+  mv jdk-21/ /usr/local/
+  export JAVA_HOME=/usr/local/jdk-21
   export PATH=$PATH:$JAVA_HOME/bin
   ldconfig
-  rm openjdk-25_linux-x64_bin.tar.gz
+  rm openjdk-21_linux-x64_bin.tar.gz
 
 # GSL (GNU Scientific Library)
   wget https://gnuftp.uib.no/gsl/gsl-${GSL_VERSION}.tar.gz
@@ -536,7 +536,7 @@ echo "options(BioC_mirror = 'https://packagemanager.posit.co/bioconductor')" >> 
   source /opt/rh/gcc-toolset-13/enable
   export BUILD_DATE=2026-01-07
   export CC=gcc
-  export JAVA_HOME=/usr/local/jdk-25
+  export JAVA_HOME=/usr/local/jdk-21
   export PATH=$PATH:$JAVA_HOME/bin
   export LANG=en_US.UTF-8
   export LC_ALL=en_US.UTF-8
@@ -593,6 +593,11 @@ echo "options(BioC_mirror = 'https://packagemanager.posit.co/bioconductor')" >> 
 
 # set afterwards in a sandbox:
 ## OneMKL environment variables into /.singularity.d/env/91-environment.sh
+#
+#  export R_PACKAGE_DIR=/appl/soft/math/r-env/452/452-rpackages
+#  export PATH=${R_PACKAGE_DIR}/Rmpi:$PATH
+#  export PATH=${R_PACKAGE_DIR}/snow:$PATH
+#  
 #  source /opt/intel/oneapi/setvars.sh intel64
 #
 #  echo "export CPATH=$CPATH" >> $APPTAINER_ENVIRONMENT
