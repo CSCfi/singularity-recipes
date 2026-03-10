@@ -1,0 +1,10 @@
+Bootstrap: localimage
+From: $PATH_TO_REPO/singularity-recipes/qiskit/LUMI/HPE_Cray_MPI/qiskit_1.3.2_rocm_6.0.3/output/03-qiskit-1.3.2_qiskit-aer-gpu-rocm-0.16.0.1.sif
+
+%labels
+  Author Michael Mucciardi <michael.mucciardi@csc.fi>
+
+
+%post
+
+rm  /usr/lib/python3.11/site-packages/distutils-precedence.pth

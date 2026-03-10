@@ -1,0 +1,11 @@
+qiskit==1.2.4
+numpy==2.1.3
+qiskit[visualization]
+matplotlib
+qiskit-nature
+qiskit-finance
+qiskit-optimization
+qiskit-machine-learning
+qiskit-experiments[extras]
+jupyter
+pipdeptree

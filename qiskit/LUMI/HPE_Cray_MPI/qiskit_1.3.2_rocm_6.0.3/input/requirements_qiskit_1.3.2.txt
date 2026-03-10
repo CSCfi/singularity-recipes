@@ -1,0 +1,12 @@
+qiskit==1.3.2
+qiskit[visualization]
+matplotlib
+qiskit-nature
+qiskit-finance
+qiskit-optimization
+qiskit-machine-learning
+qiskit-experiments[extras]
+qiskit-dynamics
+jupyter
+pipdeptree
+pip==22.3.1

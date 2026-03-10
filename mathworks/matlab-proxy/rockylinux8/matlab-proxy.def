@@ -1,0 +1,19 @@
+Bootstrap: localimage
+From: {{MATLAB_SIF}}
+
+%arguments
+    MATLAB_SIF=
+
+%post
+    dnf update -y
+    dnf install -y epel-release
+    dnf install -y python3.11 python3.11-pip xorg-x11-server-Xvfb fluxbox
+    dnf clean all -y
+    python3.11 -m venv /opt/venv
+    export PATH=/opt/venv/bin:$PATH
+    python3 -m pip install --upgrade pip
+    python3 -m pip install --no-cache-dir matlab-proxy==0.27.1
+
+%environment
+    export PYTHONNOUSERSITE="1"
+    export PATH=/opt/venv/bin:$PATH

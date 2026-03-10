@@ -1,0 +1,38 @@
+Bootstrap: localimage
+From: base.sif
+
+%files
+    # Include repositories from host
+    /etc/yum.repos.d/Appstream_Erratas.repo
+    /etc/yum.repos.d/BaseOS_Erratas.repo
+    /etc/yum.repos.d/OS_Appstream.repo
+    /etc/yum.repos.d/OS_BASE.repo
+    /etc/yum.repos.d/OS_Codeready_builder.repo
+    /etc/yum.repos.d/CSC_general.repo
+    /etc/yum.repos.d/CSC_gpu_addons.repo
+    /etc/yum.repos.d/CSC_lustre.repo
+    /etc/yum.repos.d/CSC_slurm.repo
+    /etc/yum.repos.d/EPEL.repo
+    /etc/yum.repos.d/MLNX_OFED.repo
+    /etc/yum.repos.d/NVIDIA_CUDA.repo
+
+%post
+    # Install packages
+    dnf install -y --disableplugin=subscription-manager \
+        libevent-2.1.8 \
+        libevent-devel-2.1.8 \
+        pmix-3.2.3 \
+        openssh-8.0p1 \
+        openssl-1.1.1k \
+        openssl-devel-1.1.1k \
+        gnutls-3.6.16 \
+        nettle-3.4.1 \
+        nettle-devel-3.4.1 \
+        libidn2-2.2.0 \
+        libidn2-devel-2.2.0 \
+        libtasn1-4.13 \
+        libtasn1-devel-4.13 \
+        p11-kit-0.23.22 \
+        p11-kit-devel-0.23.22 \
+        hwloc-2.2.0 \
+        hwloc-devel-2.2.0

@@ -1,0 +1,41 @@
+Bootstrap: docker
+From: rockylinux:{{ OS_VERSION }}
+
+%arguments
+  NPROCS=4
+  OPENMPI_VERSION=4.1.4rc1
+  OSU_MICRO_BENCHMARKS_VERSION=7.4
+  GCC_VERSION=9
+  UCX_VERSION=1.13.0
+  OS_NAME=rhel
+  OS_VERSION=8.6
+  OFED_VERSION=5.6-2.0.9.0
+
+%post
+  # Base tools and newer gcc version
+  dnf install -y dnf-plugins-core epel-release
+  dnf config-manager  --set-enabled powertools
+  dnf install -y make gdb wget numactl-devel which
+  dnf -y install gcc-toolset-{{ GCC_VERSION }}
+  source /opt/rh/gcc-toolset-{{ GCC_VERSION }}/enable
+
+  # Enable Mellanox OFED rpm repo
+  wget https://www.mellanox.com/downloads/ofed/RPM-GPG-KEY-Mellanox
+  rpm --import RPM-GPG-KEY-Mellanox
+  rm RPM-GPG-KEY-Mellanox
+  cd /etc/yum.repos.d/
+  wget https://linux.mellanox.com/public/repo/mlnx_ofed/{{ OFED_VERSION }}/{{ OS_NAME }}{{ OS_VERSION }}/mellanox_mlnx_ofed.repo
+  cd /
+
+  # Install network library components
+  dnf -y install rdma-core ucx-ib-{{ UCX_VERSION }} ucx-devel-{{ UCX_VERSION }} ucx-knem-{{ UCX_VERSION }} ucx-cma-{{ UCX_VERSION }} ucx-rdmacm-{{ UCX_VERSION }}
+
+  # Install OpenMPI
+  dnf -y install openmpi-{{ OPENMPI_VERSION }}
+
+%environment
+  source /opt/rh/gcc-toolset-{{ GCC_VERSION }}/enable
+  export OMPI_DIR=/usr/mpi/gcc/openmpi-{{ OPENMPI_VERSION }}
+  export PATH="$OMPI_DIR/bin:$PATH"
+  export LD_LIBRARY_PATH="$OMPI_DIR/lib:$LD_LIBRARY_PATH"
+  export MANPATH="$OMPI_DIR/share/man:$MANPATH"

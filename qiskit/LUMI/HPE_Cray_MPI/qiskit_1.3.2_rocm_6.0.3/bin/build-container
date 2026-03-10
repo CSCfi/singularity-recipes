@@ -1,0 +1,240 @@
+#!/bin/bash
+
+#### Author Orian Louant <orian.louant@uliege.be> ####
+
+function error() {
+  echo -e "$(tput setaf 1)[BUILDER ERROR]$(tput sgr0) $1\n" >&2
+}
+
+function info() {
+  echo -e "$(tput setaf 4)[BUILDER INFO]$(tput sgr0) $1" >&2
+}
+
+function cleanup() {
+  info "Cleaning up..."
+  [[ -d $tmpdir ]] && rm -rf $tmpdir
+}
+
+print_help() {
+ cat <<EOF
+build-container [OPTIONS]
+
+Options:
+   -i, --input-dir      the directory containing the singularity
+                        recipes file to build.
+   -o, --output-dir     the output directory where to store the
+                        containers that will be build.
+   -b, --base-container the container that will serve as the basis
+                       of the container to be build
+   -h, --help           print this message
+
+EOF
+}
+
+function getbinds() {
+  local binds=""
+
+  for type in dirs files; do
+    local exists=$(                                                     \
+      singularity exec $1 bash -c                                       \
+        "test -f /etc/container-bind-$type.list && echo yes || echo no" \
+    )
+
+    if [[ xyes == x$exists ]]; then
+      local temp=$(                            \
+        singularity exec $1 bash -c            \
+        "cat /etc/container-bind-$type.list" | \
+        paste -s -d ','                        \
+      )
+
+      binds="${binds}${binds:+${temp:+,}}${temp}"
+    fi
+  done
+
+  echo $binds
+}
+
+function singularity_build() {
+  local previoussif=$1
+  local currentsif=$2
+  local deffile=$3
+
+  local binds=$(getbinds $previoussif)
+  local singopts="build --force"
+
+  if [[ -n $binds ]]; then
+    singopts="$singopts -B$binds"
+  fi
+
+  if [[ -f build.args ]]; then
+    singopts="$singopts --build-arg-file build.args"
+  fi
+
+  singularity $singopts $currentsif $deffile
+
+  return $?
+}
+
+opts=$(getopt -o i:o:b:fh --long input-dir:,output-dir:,base-container:,finalize,help \
+              -n 'build-container' -- "$@")
+
+eval set -- "$opts"
+
+inputdir=$(pwd)
+outputdir=$inputdir
+finalize=false
+basecontainer="notset"
+
+while true; do
+  case "$1" in
+    -i | --input-dir ) inputdir=$(readlink -f $2); shift 2;;
+    -o | --output-dir ) outputdir=$(readlink -f $2); shift 2 ;;
+    -b | --base-container) basecontainer=$(readlink -f $2); shift 2;;
+    -f | --finalize ) finalize=true; shift 2 ;;
+    -h | --help ) print_help; exit ;;
+    -- ) shift; break ;;
+    * ) break ;;
+  esac
+done
+
+if [[ x$basecontainer != xnotset && ! -f $basecontainer ]]; then
+  error "Provided base container $basecontainer doesn't exist"
+  exit 1
+fi
+
+if [[ ! -d $inputdir ]]; then
+  error "Input directory $inputdir doesn't exist"
+  exit 1
+fi
+
+pushd $inputdir &>/dev/null
+info "Using input directory: $inputdir"
+
+mkdir -p $outputdir &>/dev/null
+if [[ ! -d $outputdir ]]; then
+  error "Output directory $outputdir doesn't exist"
+fi
+
+info "Using output directory: $outputdir"
+
+# Sanitize environment: remove variables that can influence singularity
+for var in $(env | grep ^SINGULARITY | cut -d '=' -f1) ; do
+  unset "$var"
+done
+
+trap cleanup EXIT SIGINT
+
+tmpdir=$(mktemp -d)
+
+printf -v timestamp '%(%Y%m%d_%H%M%S)T' -1
+
+mytmp="$tmpdir/$timestamp"
+
+if ! mkdir -p $mytmp; then
+  error "Failed to create temporary directory ($mytmp)"
+  exit 1
+fi
+
+singularity_tmp="$mytmp/tmp"
+singularity_cache="$mytmp/cache"
+
+if ! mkdir -p $singularity_tmp &>/dev/null ; then
+  error "Failed to create singularity temporary directory ($singularity_tmp)."
+  exit 1
+fi
+
+if ! mkdir -p $singularity_cache &>/dev/null; then
+  error "Failed to create temporary directory ($singularity_cache)."
+  exit 1
+fi
+
+export SINGULARITY_TMPDIR=$singularity_tmp
+export SINGULARITY_CACHE=$singularity_cache
+
+canskip=true
+
+if [[ x$basecontainer == xnotset ]]; then
+  if [[ ! -f base.def ]]; then
+    info "No base container recipe found"
+
+    if [[ ! -f base.sif ]]; then
+      error "No base container found: cannot continue"
+      exit 1
+    fi
+
+    info "Using base.sif as starting point for build"
+
+  elif [[ ! -f $outputdir/base.sif || base.def -nt $outputdir/base.sif ]]; then
+    info "Building base container"
+
+    temp_container=$mytmp/base_temp.sif
+
+    if [[ -f build.args ]]; then
+     buildargs="--build-arg-file build.args"
+    fi
+
+    singularity build --force $buildargs $mytmp/base_temp.sif base.def
+
+    if [[ $? -ne 0 ]]; then
+      error "Build of base container failed"
+      exit 1
+    fi
+
+    cat >$mytmp/base_ldconfig.def <<EOF
+Bootstrap: localimage
+From: $temp_container
+
+%post
+
+ldconfig
+EOF
+
+    singularity_build $temp_container $outputdir/base.sif $mytmp/base_ldconfig.def
+
+    if [[ $? -ne 0 ]]; then
+      error "Build of base container failed"
+      exit 1
+    fi
+
+    rm -f $mytmp/base_temp.sif
+
+    canskip=false
+  else
+    info "Skipping base container build"
+  fi
+else
+  info "Using $basecontainer as base container"
+fi
+
+previous=base
+recipes=$(find -type f -name "*.def" ! -name "base.def" -printf '%P\n' | grep -E '[0-9]+-.*.def$' | sort)
+
+for stage in $recipes; do
+  stage_name=${stage%.*}
+
+  currentcontainer="$outputdir/$stage_name.sif"
+
+  if [[ -f $currentcontainer && $currentcontainer -nt $stage && $canskip == true ]]; then
+    info "Skipping stage $stage_name"
+    previous=$stage_name
+    continue
+  fi
+
+  info "Building stage $stage_name"
+
+  previouscontainer="$outputdir/$previous.sif"
+  if [[ $previous == base && x$basecontainer != xnotset ]]; then
+    previouscontainer=$basecontainer
+  fi
+  sed -i "s#^From:.*#From: "$previouscontainer"#" $stage
+
+  singularity_build $previouscontainer $currentcontainer $stage
+
+  if [[ $? -ne 0 ]]; then
+    error "Failed to build stage $stage_name"
+    exit 1
+  fi
+
+  previous=$stage_name
+  canskip=false
+done

@@ -1,0 +1,24 @@
+Bootstrap: localimage
+From: core.sif
+
+%files
+    # Include repositories from host
+    /etc/yum.repos.d/bull_Foundation.repo
+    /etc/yum.repos.d/bull_Foundation_FIX.repo
+    /etc/yum.repos.d/bull_IBMS.repo
+    /etc/yum.repos.d/bull_IBMS_FIX.repo
+    /etc/yum.repos.d/bull_MC-SCS.repo
+    /etc/yum.repos.d/bull_MC-SCS_FIX.repo
+
+    # Include repository gpg keys
+    /etc/pki/bull-rpm-gpg/RPM-GPG-KEY-bull-hpc-bxi.public
+    /etc/pki/bull-rpm-gpg/RPM-GPG-KEY-bull-hpc-factory.public
+
+%post
+    # Ensure read permission
+    chmod a+r /etc/pki/bull-rpm-gpg/RPM-GPG-KEY-bull-hpc-bxi.public
+    chmod a+r /etc/pki/bull-rpm-gpg/RPM-GPG-KEY-bull-hpc-factory.public
+
+    # Install packages
+    dnf install -y --disableplugin=subscription-manager \
+        slurm-24.05.7

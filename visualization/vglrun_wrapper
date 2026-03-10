@@ -1,0 +1,10 @@
+#!/bin/bash
+VGL_DISPLAY=$(getEglCard)
+DISPLAY=":$(getX11Display)"
+export VGL_DISPLAY DISPLAY
+
+if [ ! -e "$VGL_DISPLAY" ]; then
+    eglDebugInfo
+else
+    vglrun "$@"
+fi

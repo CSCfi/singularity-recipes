@@ -1,0 +1,249 @@
+Bootstrap: docker
+From: rockylinux/rockylinux:8.10
+
+%labels
+  Author Mats Sjöberg <mats.sjoberg@csc.fi>
+
+%files
+  requirements_pytorch_2.6.txt /opt/requirements.txt
+  faiss-python-problem.patch /opt/faiss-python-problem.patch
+
+%post
+  PYVER=python3.12
+  
+  # Use all available cores for compilation
+  export MAKEFLAGS="-j$(nproc)"
+
+  # Enable powertools
+  dnf install -y dnf-plugins-core
+  dnf config-manager --set-enabled powertools
+
+  # Enable extra repositories
+  dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+  dnf install -y https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-8.noarch.rpm
+
+  # Upgrade packages to most recent versions
+  dnf -y upgrade
+
+  # Install additional packages
+  dnf -y install which patch ${PYVER}-devel ${PYVER}-pip git wget libsndfile \
+      ncurses-devel turbojpeg turbojpeg-devel libxkbcommon-x11 \
+      openblas-devel ffmpeg libxml2-devel libxslt-devel unzip \
+      bzip2-devel graphviz sqlite-devel openssl-devel sparsehash-devel \
+      numactl numactl-devel
+
+  # Install newer gcc
+  dnf -y install gcc-toolset-13   
+  source /opt/rh/gcc-toolset-13/enable
+
+  # We need newer nodejs
+  dnf module -y install nodejs:22/common
+
+  # Make "python" and "pip" commands work
+  alternatives --set python /usr/bin/python3
+  alternatives --install /usr/bin/pip pip /usr/bin/pip3 1
+
+  # Upgrade pip
+  pip install --upgrade pip
+
+  # This is a hack to make sure that /usr/local/lib* paths are always
+  # included, even with PYTHONNOUSERSITE="TRUE" set
+  echo "/usr/local/lib/${PYVER}/site-packages" > /usr/lib/${PYVER}/site-packages/usr-local.pth
+  echo "/usr/local/lib64/${PYVER}/site-packages" >> /usr/lib/${PYVER}/site-packages/usr-local.pth
+
+  # For PyDreamer and MineRT
+  dnf install -y mesa-libGLU mesa-dri-drivers xrandr glx-utils xterm java-1.8.0-openjdk-headless xorg-x11-server-Xvfb
+  pip install pyglet==1.5.15
+
+  # Install Mellanox stuff and OpenMPI
+  wget https://www.mellanox.com/downloads/ofed/RPM-GPG-KEY-Mellanox
+  rpm --import RPM-GPG-KEY-Mellanox
+  rm RPM-GPG-KEY-Mellanox
+
+  # MOFED
+  cd /etc/yum.repos.d/
+  #wget https://linux.mellanox.com/public/repo/mlnx_ofed/5.5-1.0.3.2/rhel8.5/mellanox_mlnx_ofed.repo
+  #wget https://linux.mellanox.com/public/repo/mlnx_ofed/5.8-4.1.5.0/rhel8.5/mellanox_mlnx_ofed.repo
+  wget https://linux.mellanox.com/public/repo/mlnx_ofed/latest-23.07/rhel8.8/mellanox_mlnx_ofed.repo
+  
+  openmpi_package=`dnf --repo mlnx_ofed* whatprovides openmpi | grep -B 1 mlnx_ofed | grep -v Repo |  awk '{print $1;}' | sort | tail -n 1`
+  rdmacore_package=`dnf --repo mlnx_ofed* whatprovides rdma-core | grep -B 1 mlnx_ofed | grep -v Repo |  awk '{print $1;}' | sort | tail -n 1`
+  ucxib_package=`dnf --repo mlnx_ofed* whatprovides ucx-ib | grep -B 1 mlnx_ofed | grep -v Repo |  awk '{print $1;}' | sort | tail -n 1`
+  dnf -y install $openmpi_package $rdmacore_package $ucxib_package
+
+  # Install CUDA, CUDNN, NCCL
+  # cd /etc/yum.repos.d/
+  # wget https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo
+  dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo
+
+  #dnf -y install cuda-toolkit-12-4
+  dnf -y module install nvidia-driver:latest-dkms
+  dnf -y install cuda-12-4 \
+      libcudnn9-cuda-12 libcudnn9-devel-cuda-12 libcusparselt0 \
+      libnccl-2.23.4-1+cuda12.4 libnccl-devel-2.23.4-1+cuda12.4 libnccl-static-2.23.4-1+cuda12.4 
+
+  # [8.4.2025] Problems on Mahti fixed by downgrading to NCCL 2.23.4
+  # libnccl-2.26.2-1+cuda12.4 libnccl-devel-2.26.2-1+cuda12.4 libnccl-static-2.26.2-1+cuda12.4
+
+  # Settings for compiling stuff with MPI and CUDA
+  export OMPI_DIR=$(ls -1d /usr/mpi/gcc/openmpi-4.* | head -n1)
+  export PATH=$OMPI_DIR/bin:$PATH
+  export LD_LIBRARY_PATH=$OMPI_DIR/lib64:$LD_LIBRARY_PATH
+  export PATH=/usr/local/cuda/bin:$PATH
+
+  # Install Python packages, including PyTorch
+  # NOTE: torchtext removed 16.8.2024 as it is no longer supported in PyTorch 2.4
+  pip3 install wheel
+  pip3 install torch torchvision torchaudio \
+       --extra-index-url https://download.pytorch.org/whl/cu124 \
+       -r /opt/requirements.txt
+
+  # Install apex, as some legacy code still uses it
+  export MAX_JOBS="$(nproc)"
+  export TORCH_CUDA_ARCH_LIST="7.0;8.0"
+  pip install --upgrade setuptools   # maybe fixes issue where it is just installing Python part of apex, not compiling the C parts
+  pip install ninja
+  
+  cd /opt
+  git clone https://github.com/NVIDIA/apex
+  cd apex
+  NVCC_APPEND_FLAGS="--threads 4" \
+                   pip install -v --disable-pip-version-check --no-cache-dir --no-build-isolation \
+                   --config-settings "--build-option=--cpp_ext --cuda_ext --parallel 8" ./
+  cd
+  rm -rf /opt/apex
+
+  # xformers
+  pip3 install xformers --index-url https://download.pytorch.org/whl/cu124
+
+  # PyTorch geometric and related libraries
+  #
+  # We need to compile pyg_lib due to GLIBC problem with rockylinux:8.8 and 8.9 at least
+  # STATUS 1.4.2025: pyg still doesn't support PyTorch 2.6, skipping
+  #
+  # TORCH_CUDA_ARCH_LIST="7.0;8.0" pip install git+https://github.com/pyg-team/pyg-lib.git
+  # pip install torch_scatter torch_sparse torch_cluster torch_spline_conv \
+  #     -f https://data.pyg.org/whl/torch-2.5.1+cu124.html
+
+  pip install jupyterlab-dash
+  /usr/local/bin/jupyter lab build
+
+  # Install recent Vim with Python-support
+  # It has to be done like this as default vim-enhanced is compiled
+  # against python3.6 version
+
+  dnf -y install jq
+  # Fetch newest vim version
+  VIMVER=$(curl -s "https://api.github.com/repos/vim/vim/tags?per_page=1" | jq -r '.[0].name')
+  cd /opt/
+  wget https://github.com/vim/vim/archive/refs/tags/${VIMVER}.tar.gz
+  tar xf ${VIMVER}.tar.gz
+  cd vim-${VIMVER/v/}
+  ./configure --enable-python3interp=yes --prefix=/opt/vim --enable-fail-if-missing && make -j && make install
+  cd
+  rm -rf /opt/vim-${VIMVER/v/} /opt/v${VIMVER}.tar.gz
+
+  # Install OpenCV >= 4
+  cd /opt/
+  OPENCV_VER=4.11.0
+  wget https://github.com/opencv/opencv/archive/${OPENCV_VER}.zip
+  unzip ${OPENCV_VER}.zip
+  cd opencv-${OPENCV_VER}
+  mkdir build; cd build
+  cmake -DOPENCV_GENERATE_PKGCONFIG=ON ..
+  # Note, make -j10 runs out of memory on my cPouta instance
+  make -j6 && make install
+  cd
+  rm -rf /opt/${OPENCV_VER}.zip /opt/opencv-${OPENCV_VER}
+  export LD_LIBRARY_PATH=/usr/local/lib64:$LD_LIBRARY_PATH
+  
+  # Install ffcv
+  export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/lib64/pkgconfig
+
+  pip3 install ffcv  # needs opencv install (above)
+
+  # Install DeepSpeed
+  dnf -y install libaio-devel
+
+  pip install deepspeed-kernels
+  TORCH_CUDA_ARCH_LIST="7.0;8.0" DS_BUILD_OPS=1 \
+                      DS_BUILD_EVOFORMER_ATTN=1 DS_BUILD_SPARSE_ATTN=1 DS_BUILD_CCL_COMM=0 \
+                      pip install deepspeed --global-option="build_ext" --global-option="-j8" --no-cache-dir
+
+
+  # # Sometimes pip install doesn't work, here's how to build DeepSpeed from source...
+  # cd /opt
+  # git clone https://github.com/deepspeedai/DeepSpeed/
+  # cd DeepSpeed/
+  # export TORCH_CUDA_ARCH_LIST="7.0;8.0"
+  # pip install -v .
+  # cd /opt
+  # rm -rf DeepSpeed
+  
+  sed -i 's/hostname -I/hostname -s/g' /usr/local/lib*/${PYVER}/site-packages/deepspeed/comm/comm.py
+
+  # # PyTorch3D doesn't seem to support PyTorch 2.5 or newer...
+  # # Install pytorch3d and open3d
+  # # TORCH_CUDA_ARCH_LIST="7.0;8.0" FORCE_CUDA=1 \
+  # #                     pip install \
+  # #                     "git+https://github.com/facebookresearch/pytorch3d.git"
+  # # pip install open3d
+  # # cd /opt
+  # # git clone https://github.com/isl-org/Open3D
+  # # cd Open3D
+  # # dnf -y install clang
+
+  # litgpt 0.5.7 not supporting PyTorch 2.6.0 yet
+  # pip install litgpt[all]
+  pip install vllm 
+  # # pip install vllm --pre --extra-index-url https://wheels.vllm.ai/nightly
+  
+  pip install flash-attn --no-build-isolation
+
+  # sglang not yet supporting PyTorch 2.6
+  # # sglang
+  # # pip install --upgrade pip
+  # # pip install sgl-kernel --force-reinstall --no-deps
+  # #pip install "sglang[all]>=0.4.2.post4" --find-links https://flashinfer.ai/whl/cu124/torch2.5/flashinfer/
+  
+  # Install faiss
+  dnf -y install swig gflags-devel
+
+  FAISS_VER=v1.10.0
+  cd /opt
+  git clone --branch $FAISS_VER https://github.com/facebookresearch/faiss
+
+  cd faiss
+  patch -p1 < /opt/faiss-python-problem.patch
+  cmake -B build . -DFAISS_ENABLE_GPU=ON -DFAISS_ENABLE_PYTHON=ON \
+        -DFAISS_OPT_LEVEL=generic \
+        -DFAISS_ENABLE_C_API=ON \
+        -DBUILD_SHARED_LIBS=ON -DCMAKE_CUDA_ARCHITECTURES="70;80" -DCMAKE_BUILD_TYPE=Release
+  make -C build -j10 faiss
+
+  #sed -ie 's/-doxygen//' build/faiss/python/CMakeFiles/swigfaiss_swig_compilation.dir/build.make
+  sed -i 's/-doxygen//' build/faiss/python/CMakeFiles/*swig_compilation.dir/build.make
+
+  make -C build -j10 swigfaiss
+  cd build/faiss/python
+  #python setup.py install
+  pip install .
+
+  cd /opt/faiss
+  make -C build install
+  cd /opt
+  rm -rf faiss
+
+  # echo /usr/local/lib/${PYVER}/site-packages/faiss-*.egg >> /usr/lib/${PYVER}/site-packages/usr-local.pth
+
+  dnf clean all
+
+
+%environment
+  source /opt/rh/gcc-toolset-13/enable
+
+  export OMPI_DIR=$(ls -1d /usr/mpi/gcc/openmpi-4.* | head -n1)
+  export PATH=/usr/local/cuda/bin:$OMPI_DIR/bin:/opt/vim/bin:$PATH
+  export LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/local/lib64:$OMPI_DIR/lib64:/usr/local/lib/python3.12/site-packages/faiss:$LD_LIBRARY_PATH
+  export LIBRARY_PATH=  # added 8.1.2025 as modules in host may set this which confuses compilations
+  export KERAS_BACKEND="torch"

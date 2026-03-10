@@ -1,0 +1,20 @@
+Bootstrap: docker
+From: docker.io/rockylinux/rockylinux:8.10
+
+%post
+    # Replace the failing commands with always succeeding dummies.
+    cp /usr/bin/true /usr/sbin/useradd
+    cp /usr/bin/true /usr/sbin/groupadd
+
+    # Install Python with system package manager.
+    dnf -y update
+    dnf -y install python3.11 python3.11-pip
+    dnf -y clean all
+
+    # Create a Python virtual environment and install packages using pip.
+    python3.11 -m venv /opt/venv
+    export PATH=/opt/venv/bin:$PATH
+    #pip install --no-cache-dir ...
+
+%environment
+    export PATH=/opt/venv/bin:$PATH
