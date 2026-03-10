@@ -1,0 +1,57 @@
+Bootstrap: docker 
+From: ubuntu:24.04 
+%files 
+response.varfile /opt/snap/response.varfile 
+
+%post
+    apt-get update
+    apt-get install -y \
+        wget \
+	build-essential \
+	python3 \
+	python3-pip \
+	libxrender1 \
+	libxtst6 \
+	libxi6 \
+	libxext6 \
+	libx11-6 \
+	libxrandr2 \
+	libfreetype6 \
+	libglib2.0-0 \
+	libxxf86vm1 \
+	python3-gdal \
+	gdal-bin \
+	libsqlite3-mod-spatialite \
+	libpq-dev \
+	libgl1 \
+	libglu1-mesa \
+	libgl1-mesa-dri \
+	git
+				
+    # Download SNAP installer
+    wget -O snap.sh https://download.esa.int/step/snap/13.0/installers/esa-snap_all_linux-13.0.0.sh
+    chmod +x snap.sh
+    # silent install
+    ./snap.sh -q -varfile /opt/snap/response.varfile -dir /opt/snap
+    rm snap.sh
+
+    /opt/snap/bin/snap --nosplash --nogui --modules --update-all 2>&1 | while read -r line; do
+        echo "$line"
+    	# https://senbox.atlassian.net/wiki/spaces/SNAP/pages/30539785/Update+SNAP+from+the+command+line
+     	if [ "$line" = "updates=0" ]; then
+            sleep 2
+            if pgrep -f "snap/jre/bin/java" > /dev/null; then
+            	pkill -TERM -f "snap/jre/bin/java"
+            fi
+    	fi
+    done
+
+    pip install --break-system-packages jupyterlab jupyterlab-git jupyter-resource-usage nbclassic esa_snappy pyroSAR
+    /opt/snap/bin/snappy-conf /usr/bin/python3
+
+%environment
+    export SNAP_HOME=/opt/snap
+    export PATH=/opt/snap/bin:/opt/snap/jre/lib/server:$PATH
+    export TZ=Europe/Helsinki
+    export LC_ALL=C.UTF-8
+    export LANG=C.UTF-8	
