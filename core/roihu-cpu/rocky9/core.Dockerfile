@@ -26,7 +26,7 @@ RUN chmod a+r /etc/pki/bull-rpm-gpg/RPM-GPG-KEY-eviden-bds-factory.public
 # Install spack externals
 RUN update-crypto-policies --set LEGACY && \
     dnf update -y && \
-    dnf install -y --allowerasing rdma-core rdma-core-devel ucx ucx-cma ucx-cuda ucx-devel ucx-gdrcopy ucx-ib ucx-ib-mlx5 ucx-knem ucx-rdmacm ucx-xpmem hwloc-2.4.1 hwloc-libs hwloc-devel m4-1.4.19 openssl-3.5.1 openssl-devel-3.5.1 make-4.3 sed-4.8 diffutils-3.7 coreutils-8.32 autoconf-2.69 gawk-5.1.0 automake-1.16.2 binutils-2.35.2 gettext-0.21 groff-1.22.4 tar-1.34 curl-7.76.1 cmake-3.26.5 openssh-8.7p1 pkgconf-1.7.3 findutils-4.8.0 git-2.47.3 libevent-2.1.12 libevent-devel-2.1.12 && \
+    dnf install -y --allowerasing rdma-core rdma-core-devel ucx ucx-cma ucx-cuda ucx-devel ucx-gdrcopy ucx-ib ucx-ib-mlx5 ucx-knem ucx-rdmacm ucx-xpmem hwloc-2.4.1 hwloc-libs hwloc-devel m4-1.4.19 openssl-3.5.1 openssl-devel-3.5.1 make-4.3 sed-4.8 diffutils-3.7 coreutils-8.32 autoconf-2.69 gawk-5.1.0 automake-1.16.2 binutils-2.35.2 gettext-0.21 gettext-devel-0.21 groff-1.22.4 tar-1.34 curl-7.76.1 libcurl-devel-7.76.1 cmake-3.26.5 openssh-8.7p1 pkgconf-1.7.3 findutils-4.8.0 git-2.47.3 libevent-2.1.12 libevent-devel-2.1.12 && \
     update-crypto-policies --set DEFAULT
 COPY /usr/lib64/liblustreapi.a /usr/lib64/liblustreapi.a
 COPY /usr/lib64/liblustreapi.so.1.0.0 /usr/lib64/liblustreapi.so.1.0.0
