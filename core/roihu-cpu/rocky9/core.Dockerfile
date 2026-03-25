@@ -54,6 +54,9 @@ RUN update-crypto-policies --set LEGACY && \
         tar-1.34 \
         curl-7.76.1 \
         libcurl-devel-7.76.1 \
+        cyrus-sasl-gssapi-2.1.27 \
+        openldap-2.6.8 \
+        libnghttp2-1.43.0 \
         cmake-3.26.5 \
         openssh-8.7p1 \
         pkgconf-1.7.3 \
