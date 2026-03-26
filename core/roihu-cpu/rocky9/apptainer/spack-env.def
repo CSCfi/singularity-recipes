@@ -1,5 +1,5 @@
 Bootstrap: localimage
-From: base.sif
+From: core.sif
 
 %setup
     # Preserve symbolic links. Do NOT dereference.
