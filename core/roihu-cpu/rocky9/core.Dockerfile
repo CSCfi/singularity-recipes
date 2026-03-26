@@ -25,18 +25,20 @@ RUN update-crypto-policies --set LEGACY && \
     dnf install -y --allowerasing \
         rdma-core-2510.0.10 \
         rdma-core-devel-2510.0.10 \
-        ucx-1.20.0 \
-        ucx-cma-1.20.0 \
-        ucx-cuda-1.20.0 \
-        ucx-devel-1.20.0 \
-        ucx-gdrcopy-1.20.0 \
-        ucx-ib-1.20.0 \
-        ucx-ib-mlx5-1.20.0 \
-        ucx-knem-1.20.0 \
-        ucx-rdmacm-1.20.0 \
-        ucx-xpmem-1.20.0 \
-        hwloc-2.4.1 \
-        hwloc-devel-2.4.1 \
+        #ucx-1.20.0 \
+        #ucx-cma-1.20.0 \
+        #ucx-cuda-1.20.0 \
+        #ucx-devel-1.20.0 \
+        #ucx-gdrcopy-1.20.0 \
+        #ucx-ib-1.20.0 \
+        #ucx-ib-mlx5-1.20.0 \
+        #ucx-knem-1.20.0 \
+        #ucx-rdmacm-1.20.0 \
+        #ucx-xpmem-1.20.0 \
+        #hwloc-2.4.1 \
+        #hwloc-devel-2.4.1 \
+        #knem-1.1.4.90mlnx4 \
+        #openmpi-bull-4.1.8.4.4 \
         m4-1.4.19 \
         openssl-3.5.1 \
         openssl-devel-3.5.1 \
@@ -79,4 +81,10 @@ COPY /opt/pmix/5.0.7 /opt/pmix/5.0.7
 # Knem
 COPY /opt/knem-1.1.4.90mlnx4 /opt/knem-1.1.4.90mlnx4
 
-# TODO: Disable internal repos
+# Disable internal repos
+RUN sed -i 's/^enabled = 1/enabled = 0/' /etc/yum.repos.d/AppStream.repo && \
+    sed -i 's/^enabled = 1/enabled = 0/' /etc/yum.repos.d/BullSequana.repo && \
+    sed -i 's/^enabled = 1/enabled = 0/' /etc/yum.repos.d/BaseOS.repo && \
+    sed -i 's/^enabled = 1/enabled = 0/' /etc/yum.repos.d/codeready-builder.repo && \
+    sed -i 's/^enabled = 1/enabled = 0/' /etc/yum.repos.d/bull-extra.repo && \
+    sed -i 's/^enabled = 1/enabled = 0/' /etc/yum.repos.d/CSC_general.repo
