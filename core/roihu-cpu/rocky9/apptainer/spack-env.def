@@ -1,4 +1,4 @@
-Boostrap: localimage
+Bootstrap: localimage
 From: base.sif
 
 %setup

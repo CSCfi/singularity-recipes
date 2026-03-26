@@ -1,15 +1,16 @@
-Boostrap: docker
-From docker.io/rockylinux/rockylinux:9.7
+Bootstrap: docker
+From: docker.io/rockylinux/rockylinux:9.7
 
 %setup
     cp -d /usr/lib64/liblustreapi.a $APPTAINER_ROOTFS/usr/lib64/liblustreapi.a
     cp -d /usr/lib64/liblustreapi.so $APPTAINER_ROOTFS/usr/lib64/liblustreapi.so
     cp -d /usr/lib64/liblustreapi.so.1 $APPTAINER_ROOTFS/usr/lib64/liblustreapi.so.1
     cp -d /usr/lib64/liblustreapi.so.1.0.0 $APPTAINER_ROOTFS/usr/lib64/liblustreapi.so.1.0.0
+    mkdir -p $APPTAINER_ROOTFS/opt/pmix
     cp -d -r /opt/pmix/5.0.7 $APPTAINER_ROOTFS/opt/pmix/5.0.7
     cp -d -r /opt/knem-1.1.4.90mlnx4 $APPTAINER_ROOTFS/opt/knem-1.1.4.90mlnx4
 
-%copy
+%files
     /etc/yum.repos.d/AppStream.repo
     /etc/yum.repos.d/BullSequana.repo
     /etc/yum.repos.d/BaseOS.repo
