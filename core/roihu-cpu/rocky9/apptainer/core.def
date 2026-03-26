@@ -33,6 +33,9 @@ From: docker.io/rockylinux/rockylinux:9.7
     update-crypto-policies --set LEGACY && \
     dnf update -y && \
     dnf install -y --allowerasing \
+        glibc-2.34 \
+        glibc-headers-2.34 \
+        glibc-devel-2.34 \
         rdma-core-2510.0.10 \
         rdma-core-devel-2510.0.10 \
         m4-1.4.19 \
