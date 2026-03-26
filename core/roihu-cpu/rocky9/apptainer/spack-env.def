@@ -1,0 +1,7 @@
+Boostrap: localimage
+From: base.sif
+
+%setup
+    # Preserve symbolic links. Do NOT dereference.
+    mkdir -p "$APPTAINER_ROOTFS/appl/soft/spack/core"
+    cp -r -d /appl/soft/spack/core/v2026_03 "$APPTAINER_ROOTFS/appl/soft/spack/core/v2026_03"
