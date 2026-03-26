@@ -26,10 +26,10 @@ $(CORE_SIF): $(CORE_DEF)
 	apptainer build --fakeroot --bind=$(TMPDIR):/tmp $@ $<
 
 $(SPACK_ENV_SIF): $(SPACK_ENV_DEF) $(CORE_SIF)
-	apptainer build --fakeroot --bind=$(TMPDIR):/tmp $@ $<
+	apptainer build --fakeroot --bind=$(TMPDIR):/tmp --mksquashfs-args=-no-compression $@ $<
 
 $(OSU_SIF): $(OSU_DEF) $(SPACK_ENV_SIF)
-	apptainer build --fakeroot --bind=$(TMPDIR):/tmp $@ $<
+	apptainer build --fakeroot --bind=$(TMPDIR):/tmp --mksquashfs-args=-no-compression $@ $<
 
 .PHONY: clean
 clean:

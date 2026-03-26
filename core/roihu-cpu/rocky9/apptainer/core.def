@@ -2,6 +2,10 @@ Bootstrap: docker
 From: docker.io/rockylinux/rockylinux:9.7
 
 %setup
+    cp -d /lib64/liblnetconfig.a $APPTAINER_ROOTFS/lib64/liblnetconfig.a
+    cp -d /lib64/liblnetconfig.so $APPTAINER_ROOTFS/lib64/liblnetconfig.so
+    cp -d /lib64/liblnetconfig.so.4 $APPTAINER_ROOTFS/lib64/liblnetconfig.so.4
+    cp -d /lib64/liblnetconfig.so.4.0.0 $APPTAINER_ROOTFS/lib64/liblnetconfig.so.4.0.0
     cp -d /usr/lib64/liblustreapi.a $APPTAINER_ROOTFS/usr/lib64/liblustreapi.a
     cp -d /usr/lib64/liblustreapi.so $APPTAINER_ROOTFS/usr/lib64/liblustreapi.so
     cp -d /usr/lib64/liblustreapi.so.1 $APPTAINER_ROOTFS/usr/lib64/liblustreapi.so.1
@@ -31,20 +35,6 @@ From: docker.io/rockylinux/rockylinux:9.7
     dnf install -y --allowerasing \
         rdma-core-2510.0.10 \
         rdma-core-devel-2510.0.10 \
-        #ucx-1.20.0 \
-        #ucx-cma-1.20.0 \
-        #ucx-cuda-1.20.0 \
-        #ucx-devel-1.20.0 \
-        #ucx-gdrcopy-1.20.0 \
-        #ucx-ib-1.20.0 \
-        #ucx-ib-mlx5-1.20.0 \
-        #ucx-knem-1.20.0 \
-        #ucx-rdmacm-1.20.0 \
-        #ucx-xpmem-1.20.0 \
-        #hwloc-2.4.1 \
-        #hwloc-devel-2.4.1 \
-        #knem-1.1.4.90mlnx4 \
-        #openmpi-bull-4.1.8.4.4 \
         m4-1.4.19 \
         openssl-3.5.1 \
         openssl-devel-3.5.1 \
@@ -71,9 +61,7 @@ From: docker.io/rockylinux/rockylinux:9.7
         findutils-4.8.0 \
         git-2.47.3 \
         libevent-2.1.12 \
-        libevent-devel-2.1.12 \
-        && \
-    update-crypto-policies --set DEFAULT
+        libevent-devel-2.1.12
 
     sed -i 's/^enabled = 1/enabled = 0/' /etc/yum.repos.d/AppStream.repo
     sed -i 's/^enabled = 1/enabled = 0/' /etc/yum.repos.d/BullSequana.repo

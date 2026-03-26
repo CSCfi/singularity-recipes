@@ -5,3 +5,13 @@ From: core.sif
     # Preserve symbolic links. Do NOT dereference.
     mkdir -p "$APPTAINER_ROOTFS/appl/soft/spack/core"
     cp -r -d /appl/soft/spack/core/v2026_03 "$APPTAINER_ROOTFS/appl/soft/spack/core/v2026_03"
+
+%environment
+    # `env -i PATH=/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin /appl/soft/spack/v2026_03/spack/bin/spack env activate --sh -d /appl/soft/spack/core/v2026_03/gcc152_ec/`
+    export SPACK_ENV=/appl/soft/spack/core/v2026_03/gcc152_ec;
+    export SPACK_ENV_VIEW=default;
+    export ACLOCAL_PATH=/appl/soft/spack/core/v2026_03/gcc152_ec/views/share/aclocal:$ACLOCAL_PATH;
+    export CMAKE_PREFIX_PATH=/appl/soft/spack/core/v2026_03/gcc152_ec/views:$CMAKE_PREFIX_PATH;
+    export MANPATH=/appl/soft/spack/core/v2026_03/gcc152_ec/views/share/man:/appl/soft/spack/core/v2026_03/gcc152_ec/views/man:$MANPATH;
+    export PATH=/appl/soft/spack/core/v2026_03/gcc152_ec/views/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:$PATH;
+    export PKG_CONFIG_PATH=/appl/soft/spack/core/v2026_03/gcc152_ec/views/share/pkgconfig:/appl/soft/spack/core/v2026_03/gcc152_ec/views/lib64/pkgconfig:/appl/soft/spack/core/v2026_03/gcc152_ec/views/lib/pkgconfig:$PKG_CONFIG_PATH;
