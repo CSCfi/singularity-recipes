@@ -1,11 +1,11 @@
 TMPDIR ?= /tmp
 PREFIX := .
 
-CORE_SIF := $(PREFIX)/core.sif
-CORE_DEF := core.def
+CORE_SIF := $(PREFIX)/core-cpu-base.sif
+CORE_DEF := core-cpu-base.def
 
-SPACK_ENV_SIF := $(PREFIX)/spack-env.sif
-SPACK_ENV_DEF := spack-env.def
+SPACK_ENV_SIF := $(PREFIX)/core-cpu-gcc-15.2.sif
+SPACK_ENV_DEF := copy-cpu-gcc-15.2.def
 
 OSU_SIF := $(PREFIX)/osu.sif
 OSU_DEF := osu.def
