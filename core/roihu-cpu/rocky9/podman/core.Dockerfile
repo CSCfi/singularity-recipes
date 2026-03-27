@@ -1,44 +1,37 @@
 FROM docker://rockylinux/rockylinux:9.7
 
-# Include repositories from host
 COPY /etc/yum.repos.d/AppStream.repo /etc/yum.repos.d/AppStream.repo
 COPY /etc/yum.repos.d/BullSequana.repo /etc/yum.repos.d/BullSequana.repo
 COPY /etc/yum.repos.d/BaseOS.repo /etc/yum.repos.d/BaseOS.repo
 COPY /etc/yum.repos.d/codeready-builder.repo /etc/yum.repos.d/codeready-builder.repo
 COPY /etc/yum.repos.d/bull-extra.repo /etc/yum.repos.d/bull-extra.repo
 COPY /etc/yum.repos.d/CSC_general.repo /etc/yum.repos.d/CSC_general.repo
-
-# Include repository gpg keys
 COPY /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
-RUN chmod a+r /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
-
 COPY /etc/pki/bull-rpm-gpg/RPM-GPG-KEY-bull-hpc-factory.public /etc/pki/bull-rpm-gpg/RPM-GPG-KEY-bull-hpc-factory.public
-RUN chmod a+r /etc/pki/bull-rpm-gpg/RPM-GPG-KEY-bull-hpc-factory.public
-
 COPY /etc/pki/bull-rpm-gpg/RPM-GPG-KEY-eviden-bds-factory.public /etc/pki/bull-rpm-gpg/RPM-GPG-KEY-eviden-bds-factory.public
-RUN chmod a+r /etc/pki/bull-rpm-gpg/RPM-GPG-KEY-eviden-bds-factory.public
 
-# Install spack externals
-# RPM packages
-RUN update-crypto-policies --set LEGACY && \
+COPY /usr/lib64/liblnetconfig.a /usr/lib64/liblnetconfig.a
+COPY /usr/lib64/liblnetconfig.so.4.0.0 /usr/lib64/liblnetconfig.so.4.0.0
+RUN ln -s liblnetconfig.so.4.0.0 /usr/lib64/liblnetconfig.so.4
+RUN ln -s liblnetconfig.so.4.0.0 /usr/lib64/liblnetconfig.so
+COPY /usr/lib64/liblustreapi.a /usr/lib64/liblustreapi.a
+COPY /usr/lib64/liblustreapi.so.1.0.0 /usr/lib64/liblustreapi.so.1.0.0
+RUN ln -s liblustreapi.so.1.0.0 /usr/lib64/liblustreapi.so.1
+RUN ln -s liblustreapi.so.1.0.0 /usr/lib64/liblustreapi.so
+COPY /opt/pmix/5.0.7 /opt/pmix/5.0.7
+COPY /opt/knem-1.1.4.90mlnx4 /opt/knem-1.1.4.90mlnx4
+
+RUN chmod a+r /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release && \
+    chmod a+r /etc/pki/bull-rpm-gpg/RPM-GPG-KEY-bull-hpc-factory.public && \
+    chmod a+r /etc/pki/bull-rpm-gpg/RPM-GPG-KEY-eviden-bds-factory.public && \
+    update-crypto-policies --set LEGACY && \
     dnf update -y && \
     dnf install -y --allowerasing \
+        glibc-2.34 \
+        glibc-headers-2.34 \
+        glibc-devel-2.34 \
         rdma-core-2510.0.10 \
         rdma-core-devel-2510.0.10 \
-        #ucx-1.20.0 \
-        #ucx-cma-1.20.0 \
-        #ucx-cuda-1.20.0 \
-        #ucx-devel-1.20.0 \
-        #ucx-gdrcopy-1.20.0 \
-        #ucx-ib-1.20.0 \
-        #ucx-ib-mlx5-1.20.0 \
-        #ucx-knem-1.20.0 \
-        #ucx-rdmacm-1.20.0 \
-        #ucx-xpmem-1.20.0 \
-        #hwloc-2.4.1 \
-        #hwloc-devel-2.4.1 \
-        #knem-1.1.4.90mlnx4 \
-        #openmpi-bull-4.1.8.4.4 \
         m4-1.4.19 \
         openssl-3.5.1 \
         openssl-devel-3.5.1 \
@@ -65,24 +58,8 @@ RUN update-crypto-policies --set LEGACY && \
         findutils-4.8.0 \
         git-2.47.3 \
         libevent-2.1.12 \
-        libevent-devel-2.1.12 \
-        && \
-    update-crypto-policies --set DEFAULT
-
-# Lustre
-COPY /usr/lib64/liblustreapi.a /usr/lib64/liblustreapi.a
-COPY /usr/lib64/liblustreapi.so.1.0.0 /usr/lib64/liblustreapi.so.1.0.0
-RUN ln -s liblustreapi.so.1.0.0 /usr/lib64/liblustreapi.so.1
-RUN ln -s liblustreapi.so.1.0.0 /usr/lib64/liblustreapi.so
-
-# Pmix
-COPY /opt/pmix/5.0.7 /opt/pmix/5.0.7
-
-# Knem
-COPY /opt/knem-1.1.4.90mlnx4 /opt/knem-1.1.4.90mlnx4
-
-# Disable internal repos
-RUN sed -i 's/^enabled = 1/enabled = 0/' /etc/yum.repos.d/AppStream.repo && \
+        libevent-devel-2.1.12 && \
+    sed -i 's/^enabled = 1/enabled = 0/' /etc/yum.repos.d/AppStream.repo && \
     sed -i 's/^enabled = 1/enabled = 0/' /etc/yum.repos.d/BullSequana.repo && \
     sed -i 's/^enabled = 1/enabled = 0/' /etc/yum.repos.d/BaseOS.repo && \
     sed -i 's/^enabled = 1/enabled = 0/' /etc/yum.repos.d/codeready-builder.repo && \
