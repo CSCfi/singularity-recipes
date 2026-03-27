@@ -2,7 +2,7 @@ Bootstrap: localimage
 From: spack-env.sif
 
 %arguments
-    NPROCS=4
+    NPROCS=10
     OSU_MICRO_BENCHMARKS_VERSION=7.4
 
 %post
