@@ -3,8 +3,9 @@ From: core.sif
 
 %setup
     # Preserve symbolic links. Do NOT dereference.
-    mkdir -p "$APPTAINER_ROOTFS/appl/soft/spack/core"
-    cp -r -d /appl/soft/spack/core/v2026_03 "$APPTAINER_ROOTFS/appl/soft/spack/core/v2026_03"
+    mkdir -p "$APPTAINER_ROOTFS/appl/soft/spack/core/v2026_03"
+    cp -r -d /appl/soft/spack/core/v2026_03/compilers_ec "$APPTAINER_ROOTFS/appl/soft/spack/core/v2026_03"
+    cp -r -d /appl/soft/spack/core/v2026_03/gcc152_ec "$APPTAINER_ROOTFS/appl/soft/spack/core/v2026_03"
 
 %environment
     # Enable gcc 15.2 and binutils.
