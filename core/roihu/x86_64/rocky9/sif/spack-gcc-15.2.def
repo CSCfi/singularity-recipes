@@ -11,10 +11,10 @@ From: {{BASE_IMAGE}}
     cp -r -d /appl/soft/spack/core/v2026_03/gcc152_ec "$APPTAINER_ROOTFS/appl/soft/spack/core/v2026_03"
 
 %environment
-    # Enable gcc 15.2 and binutils.
+    # Enable gcc and binutils.
     export PATH=/appl/soft/spack/core/v2026_03/compilers_ec/install_dir/linux-x86_64_v4/gcc-15.2.0-5v4dg5kq2xj3we7lmfsobmfvnc2l5mut/bin:/appl/soft/spack/core/v2026_03/compilers_ec/install_dir/linux-x86_64_v4/binutils-2.45-qmicimoddwomguj7tl2fgkp55fupbjge/bin:$PATH
 
-    # Enable gcc 15.2 environment.
+    # Enable spack environment.
     # `env -i PATH=/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin /appl/soft/spack/v2026_03/spack/bin/spack env activate --sh -d /appl/soft/spack/core/v2026_03/gcc152_ec/`
     export SPACK_ENV=/appl/soft/spack/core/v2026_03/gcc152_ec;
     export SPACK_ENV_VIEW=default;
