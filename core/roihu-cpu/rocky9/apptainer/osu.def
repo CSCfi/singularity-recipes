@@ -2,7 +2,7 @@ Bootstrap: localimage
 From: {{BASE_IMAGE}}
 
 %arguments
-    BASE_IMAGE
+    BASE_IMAGE=
 
 %arguments
     NPROCS=10
