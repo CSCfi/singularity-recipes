@@ -28,7 +28,6 @@ RUN chmod a+r /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release && \
     dnf update -y && \
     dnf install -y --allowerasing \
         glibc-2.34 \
-        glibc-headers-2.34 \
         glibc-devel-2.34 \
         rdma-core-2510.0.10 \
         rdma-core-devel-2510.0.10 \
