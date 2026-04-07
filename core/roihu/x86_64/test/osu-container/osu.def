@@ -3,8 +3,6 @@ From: {{BASE_IMAGE}}
 
 %arguments
     BASE_IMAGE=
-
-%arguments
     NPROCS=10
     OSU_MICRO_BENCHMARKS_VERSION=7.4
 
