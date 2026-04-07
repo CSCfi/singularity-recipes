@@ -64,7 +64,8 @@ From: docker.io/rockylinux/rockylinux:9.7
         libevent-devel-2.1.12 \
         rdma-core-2510.0.10 \
         rdma-core-devel-2510.0.10 \
-        xpmem-2510.0.16 \
+        libxpmem-2510.0.16 \
+        libxpmem-devel-2510.0.16 \
         gdrcopy-2.5.1 \
         gdrcopy-devel-2.5.1
 
