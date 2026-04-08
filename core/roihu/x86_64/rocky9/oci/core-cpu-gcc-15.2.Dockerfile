@@ -1,4 +1,4 @@
-FROM localhost/core-cpu-base:v2026_03
+FROM localhost/core-cpu-deps:v2026_03
 COPY /appl/soft/spack/core/v2026_03/compilers_ec /appl/soft/spack/core/v2026_03/compilers_ec
 COPY /appl/soft/spack/core/v2026_03/gcc152_ec /appl/soft/spack/core/v2026_03/gcc152_ec
 ENV PATH=/appl/soft/spack/core/v2026_03/compilers_ec/install_dir/linux-x86_64_v4/gcc-15.2.0-5v4dg5kq2xj3we7lmfsobmfvnc2l5mut/bin:/appl/soft/spack/core/v2026_03/compilers_ec/install_dir/linux-x86_64_v4/binutils-2.45-qmicimoddwomguj7tl2fgkp55fupbjge/bin:$PATH
