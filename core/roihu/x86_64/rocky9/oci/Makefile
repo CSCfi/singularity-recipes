@@ -1,7 +1,7 @@
-.PHONY: base
-base: base.Dockerfile
-	podman build -f base.Dockerfile -t localhost/base:v2026_03 --squash-all /
+.PHONY: core-cpu-base
+core-cpu-base: core-cpu-base.Dockerfile
+	podman build -f core-cpu-base.Dockerfile -t localhost/core-cpu-base:v2026_03 --squash-all /
 
-.PHONY: spack-gcc-15.2
-spack-gcc-15.2: spack-gcc-15.2.Dockerfile
-	podman build -f spack-gcc-15.2.Dockerfile -t localhost/spack-gcc-15.2:v2026_03 /
+.PHONY: core-cpu-gcc-15.2
+core-cpu-gcc-15.2: core-cpu-gcc-15.2.Dockerfile
+	podman build -f core-cpu-gcc-15.2.Dockerfile -t localhost/core-cpu-gcc-15.2:v2026_03 /

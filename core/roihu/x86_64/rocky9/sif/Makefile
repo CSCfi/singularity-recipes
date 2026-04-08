@@ -1,11 +1,11 @@
 TMPDIR ?= /tmp
 PREFIX := .
 
-CORE_BASE_SIF := $(PREFIX)/base.sif
-CORE_BASE_DEF := base.def
+CORE_BASE_SIF := $(PREFIX)/core-cpu-base.sif
+CORE_BASE_DEF := core-cpu-base.def
 
-CORE_SPACK_SIF := $(PREFIX)/spack-gcc-15.2.sif
-CORE_SPACK_DEF := spack-gcc-15.2.def
+CORE_SPACK_SIF := $(PREFIX)/core-cpu-gcc-15.2.sif
+CORE_SPACK_DEF := core-cpu-gcc-15.2.def
 
 .PHONY: all
 all: $(CORE_BASE_SIF) $(CORE_SPACK_SIF)
