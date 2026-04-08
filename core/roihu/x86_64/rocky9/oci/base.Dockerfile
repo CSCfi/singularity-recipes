@@ -29,8 +29,6 @@ RUN chmod a+r /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release && \
     dnf install -y --allowerasing \
         glibc-2.34 \
         glibc-devel-2.34 \
-        rdma-core-2510.0.10 \
-        rdma-core-devel-2510.0.10 \
         m4-1.4.19 \
         openssl-3.5.1 \
         openssl-devel-3.5.1 \
@@ -57,7 +55,12 @@ RUN chmod a+r /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release && \
         findutils-4.8.0 \
         git-2.47.3 \
         libevent-2.1.12 \
-        libevent-devel-2.1.12 && \
+        libevent-devel-2.1.12 \
+        rdma-core-2510.0.10 \
+        rdma-core-devel-2510.0.10 \
+        libxpmem-2510.0.16 \
+        libxpmem-devel-2510.0.16 \
+        && \
     sed -i 's/^enabled = 1/enabled = 0/' /etc/yum.repos.d/AppStream.repo && \
     sed -i 's/^enabled = 1/enabled = 0/' /etc/yum.repos.d/BullSequana.repo && \
     sed -i 's/^enabled = 1/enabled = 0/' /etc/yum.repos.d/BaseOS.repo && \
