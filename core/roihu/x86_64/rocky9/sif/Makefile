@@ -1,8 +1,8 @@
 TMPDIR ?= /tmp
 PREFIX := .
 
-CORE_BASE_SIF := $(PREFIX)/core-cpu-base.sif
-CORE_BASE_DEF := core-cpu-base.def
+CORE_BASE_SIF := $(PREFIX)/core-cpu-deps.sif
+CORE_BASE_DEF := core-cpu-deps.def
 
 CORE_SPACK_SIF := $(PREFIX)/core-cpu-gcc-15.2.sif
 CORE_SPACK_DEF := core-cpu-gcc-15.2.def
