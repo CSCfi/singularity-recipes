@@ -1,4 +1,4 @@
-FROM localhost/core-gpu-base:v2026_03
+FROM localhost/core-gpu-deps:v2026_03
 COPY /appl/soft/spack/core/v2026_03/compilers_eg /appl/soft/spack/core/v2026_03/compilers_eg
 COPY /appl/soft/spack/core/v2026_03/g14cu129_eg /appl/soft/spack/core/v2026_03/g14cu129_eg
 ENV PATH=/appl/soft/spack/core/v2026_03/compilers_eg/install_dir/linux-neoverse_v2/gcc-14.3.0-mwml3gfk4d3issqhvwxlt3oo2yaormhk/bin:/appl/soft/spack/core/v2026_03/compilers_eg/install_dir/linux-neoverse_v2/binutils-2.45-iovy4emqxvyusjxcmgq6fendyvwibfxz/bin:$PATH
