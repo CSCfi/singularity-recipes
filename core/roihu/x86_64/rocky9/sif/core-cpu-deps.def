@@ -32,7 +32,6 @@ From: docker.io/rockylinux/rockylinux:9.7
     chmod a+r /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-9
     chmod a+r /etc/pki/bull-rpm-gpg/RPM-GPG-KEY-bull-hpc-factory.public
     chmod a+r /etc/pki/bull-rpm-gpg/RPM-GPG-KEY-eviden-bds-factory.public
-    chmod a+r /etc/pki/bull-rpm-gpg/RPM-GPG-KEY-eviden-bds-factory.public
 
     update-crypto-policies --set LEGACY && \
     dnf update -y && \

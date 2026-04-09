@@ -10,6 +10,9 @@ From: {{BASE_IMAGE}}
     # Install tools
     dnf install -y wget file which
 
+    # Activate environment
+    . /opt/activate.sh
+
     # Build osu benchmarks
     cd /opt
     wget -q http://mvapich.cse.ohio-state.edu/download/mvapich/osu-micro-benchmarks-{{ OSU_MICRO_BENCHMARKS_VERSION }}.tar.gz

@@ -6,7 +6,9 @@ COPY /etc/yum.repos.d/BaseOS.repo /etc/yum.repos.d/BaseOS.repo
 COPY /etc/yum.repos.d/codeready-builder.repo /etc/yum.repos.d/codeready-builder.repo
 COPY /etc/yum.repos.d/bull-extra.repo /etc/yum.repos.d/bull-extra.repo
 COPY /etc/yum.repos.d/CSC_general.repo /etc/yum.repos.d/CSC_general.repo
+COPY /etc/yum.repos.d/epel.repo /etc/yum.repos.d/epel.repo
 COPY /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+COPY /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-9 /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-9
 COPY /etc/pki/bull-rpm-gpg/RPM-GPG-KEY-bull-hpc-factory.public /etc/pki/bull-rpm-gpg/RPM-GPG-KEY-bull-hpc-factory.public
 COPY /etc/pki/bull-rpm-gpg/RPM-GPG-KEY-eviden-bds-factory.public /etc/pki/bull-rpm-gpg/RPM-GPG-KEY-eviden-bds-factory.public
 
@@ -60,6 +62,7 @@ RUN chmod a+r /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release && \
         rdma-core-devel-2510.0.10 \
         libxpmem-2510.0.16 \
         libxpmem-devel-2510.0.16 \
+        Lmod-9.1.2 \
         gdrcopy-2.5.1 \
         gdrcopy-devel-2.5.1 \
         && \
@@ -68,4 +71,5 @@ RUN chmod a+r /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release && \
     sed -i 's/^enabled = 1/enabled = 0/' /etc/yum.repos.d/BaseOS.repo && \
     sed -i 's/^enabled = 1/enabled = 0/' /etc/yum.repos.d/codeready-builder.repo && \
     sed -i 's/^enabled = 1/enabled = 0/' /etc/yum.repos.d/bull-extra.repo && \
-    sed -i 's/^enabled = 1/enabled = 0/' /etc/yum.repos.d/CSC_general.repo
+    sed -i 's/^enabled = 1/enabled = 0/' /etc/yum.repos.d/CSC_general.repo && \
+    sed -i 's/^enabled = 1/enabled = 0/' /etc/yum.repos.d/epel.repo

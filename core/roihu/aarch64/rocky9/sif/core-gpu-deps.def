@@ -21,12 +21,15 @@ From: docker.io/rockylinux/rockylinux:9.7
     /etc/yum.repos.d/codeready-builder.repo
     /etc/yum.repos.d/bull-extra.repo
     /etc/yum.repos.d/CSC_general.repo
+    /etc/yum.repos.d/epel.repo
     /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+    /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-9
     /etc/pki/bull-rpm-gpg/RPM-GPG-KEY-bull-hpc-factory.public
     /etc/pki/bull-rpm-gpg/RPM-GPG-KEY-eviden-bds-factory.public
 
 %post
     chmod a+r /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+    chmod a+r /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-9
     chmod a+r /etc/pki/bull-rpm-gpg/RPM-GPG-KEY-bull-hpc-factory.public
     chmod a+r /etc/pki/bull-rpm-gpg/RPM-GPG-KEY-eviden-bds-factory.public
 
@@ -66,6 +69,7 @@ From: docker.io/rockylinux/rockylinux:9.7
         rdma-core-devel-2510.0.10 \
         libxpmem-2510.0.16 \
         libxpmem-devel-2510.0.16 \
+        Lmod-9.1.2 \
         gdrcopy-2.5.1 \
         gdrcopy-devel-2.5.1
 
@@ -75,3 +79,4 @@ From: docker.io/rockylinux/rockylinux:9.7
     sed -i 's/^enabled = 1/enabled = 0/' /etc/yum.repos.d/codeready-builder.repo
     sed -i 's/^enabled = 1/enabled = 0/' /etc/yum.repos.d/bull-extra.repo
     sed -i 's/^enabled = 1/enabled = 0/' /etc/yum.repos.d/CSC_general.repo
+    sed -i 's/^enabled = 1/enabled = 0/' /etc/yum.repos.d/epel.repo
