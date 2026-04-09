@@ -6,20 +6,19 @@ From: {{BASE_IMAGE}}
 
 %setup
     # Preserve symbolic links. Do NOT dereference.
+    mkdir -p "$APPTAINER_ROOTFS/appl/modulefiles/spack"
+    cp -r -d /appl/modulefiles/spack/aarch64 "$APPTAINER_ROOTFS/appl/modulefiles/spack/aarch64"
     mkdir -p "$APPTAINER_ROOTFS/appl/soft/spack/core/v2026_03"
     cp -r -d /appl/soft/spack/core/v2026_03/compilers_eg "$APPTAINER_ROOTFS/appl/soft/spack/core/v2026_03"
     cp -r -d /appl/soft/spack/core/v2026_03/g14cu129_eg "$APPTAINER_ROOTFS/appl/soft/spack/core/v2026_03"
 
-%environment
-    # Enable gcc and binutils.
-    export PATH=/appl/soft/spack/core/v2026_03/compilers_eg/install_dir/linux-neoverse_v2/gcc-14.3.0-mwml3gfk4d3issqhvwxlt3oo2yaormhk/bin:/appl/soft/spack/core/v2026_03/compilers_eg/install_dir/linux-neoverse_v2/binutils-2.45-iovy4emqxvyusjxcmgq6fendyvwibfxz/bin:$PATH
-
-    # Enable spack environment.
-    # `env -i PATH=/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin /appl/soft/spack/v2026_03/spack/bin/spack env activate --sh -d /appl/soft/spack/core/v2026_03/g14cu129_eg/`
-    export SPACK_ENV=/appl/soft/spack/core/v2026_03/g14cu129_eg;
-    export SPACK_ENV_VIEW=default;
-    export ACLOCAL_PATH=/appl/soft/spack/core/v2026_03/g14cu129_eg/views/share/aclocal:$ACLOCAL_PATH;
-    export CMAKE_PREFIX_PATH=/appl/soft/spack/core/v2026_03/g14cu129_eg/views:$CMAKE_PREFIX_PATH;
-    export MANPATH=/appl/soft/spack/core/v2026_03/g14cu129_eg/views/share/man:/appl/soft/spack/core/v2026_03/g14cu129_eg/views/man:$MANPATH;
-    export PATH=/appl/soft/spack/core/v2026_03/g14cu129_eg/views/bin:$PATH;
-    export PKG_CONFIG_PATH=/appl/soft/spack/core/v2026_03/g14cu129_eg/views/share/pkgconfig:/appl/soft/spack/core/v2026_03/g14cu129_eg/views/lib64/pkgconfig:/appl/soft/spack/core/v2026_03/g14cu129_eg/views/lib/pkgconfig:$PKG_CONFIG_PATH;
+%post
+    cat > /opt/activate.sh << 'EOF'
+export PATH=/appl/soft/spack/core/v2026_03/compilers_eg/install_dir/linux-neoverse_v2/binutils-2.45-iovy4emqxvyusjxcmgq6fendyvwibfxz/bin:$PATH
+. /usr/share/lmod/9.1.2/init/bash
+module use /appl/modulefiles/spack/aarch64/Core
+module load gcc/14.3.0
+module load openblas
+module load openmpi
+module load cuda
+EOF
