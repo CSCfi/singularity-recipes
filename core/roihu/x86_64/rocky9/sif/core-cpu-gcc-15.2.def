@@ -11,7 +11,3 @@ From: {{BASE_IMAGE}}
     mkdir -p "$APPTAINER_ROOTFS/appl/soft/spack/core/v2026_03/x86_64"
     cp -r -d /appl/soft/spack/core/v2026_03/x86_64/compilers_ec "$APPTAINER_ROOTFS/appl/soft/spack/core/v2026_03/x86_64"
     cp -r -d /appl/soft/spack/core/v2026_03/x86_64/gcc152_ec "$APPTAINER_ROOTFS/appl/soft/spack/core/v2026_03/x86_64"
-
-%environment
-    # Enable binutils.
-    export PATH=/appl/soft/spack/core/v2026_03/x86_64/compilers_ec/install_dir/linux-zen5/binutils-2.46.0-cqyyzre4ylslq3peezmsn6vdg3exfkkp/bin:$PATH
