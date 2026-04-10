@@ -7,7 +7,7 @@ export PATH=/appl/soft/spack/core/v2026_03/compilers_eg/install_dir/linux-neover
 . /usr/share/lmod/9.1.2/init/bash \
 module use /appl/modulefiles/spack/aarch64/Core \
 module load gcc/14.3.0 \
-module load openblas \
-module load openmpi \
-module load cuda \
+module load cuda/12.9.1 \
+module load openblas/0.3.30 \
+module load openmpi/5.0.8 \
 EOF
