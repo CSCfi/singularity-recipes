@@ -7,10 +7,10 @@ From: {{BASE_IMAGE}}
 %setup
     # Preserve symbolic links. Do NOT dereference.
     mkdir -p "$APPTAINER_ROOTFS/appl/modulefiles/spack/x86_64"
-    cp -r -d /appl/modulefiles/spack/x86_64/v2026_03 "$APPTAINER_ROOTFS/appl/modulefiles/spack/x86_64"
+    rsync --archive /appl/modulefiles/spack/x86_64/v2026_03 "$APPTAINER_ROOTFS/appl/modulefiles/spack/x86_64"
     mkdir -p "$APPTAINER_ROOTFS/appl/soft/spack/core/v2026_03/x86_64"
-    cp -r -d /appl/soft/spack/core/v2026_03/x86_64/compilers_ec "$APPTAINER_ROOTFS/appl/soft/spack/core/v2026_03/x86_64"
-    cp -r -d /appl/soft/spack/core/v2026_03/x86_64/gcc152_ec "$APPTAINER_ROOTFS/appl/soft/spack/core/v2026_03/x86_64"
+    rsync --archive --exclude="gcc-14.1.0-*" --exclude="gcc-14.3.0-*" --exclude="gcc-13.4.0-*" --exclude="aocc-5.0.0-*" --exclude="aocc-5.1.0-*" /appl/soft/spack/core/v2026_03/x86_64/compilers_ec "$APPTAINER_ROOTFS/appl/soft/spack/core/v2026_03/x86_64"
+    rsync --archive /appl/soft/spack/core/v2026_03/x86_64/gcc152_ec "$APPTAINER_ROOTFS/appl/soft/spack/core/v2026_03/x86_64"
 
 %post
     cat > /opt/activate.sh << 'EOF'
