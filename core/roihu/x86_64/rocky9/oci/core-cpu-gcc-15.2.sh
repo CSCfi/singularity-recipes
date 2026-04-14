@@ -4,7 +4,7 @@ set -eu
 CONTAINER=$(buildah from localhost/core-cpu-deps:v2026_03)
 ROOTFS=$(buildah mount $CONTAINER)
 
-rsync --archive --mkpath /appl/modulefiles/spack/x86_64/v2026_03 "$ROOTFS/appl/modulefiles/spack/x86_64"
+rsync --archive --mkpath --exclude="gcc/14.1.0*" --exclude="gcc/14.3.0*" --exclude="gcc/13.4.0*" --exclude="aocc/" --exclude="gromacs/" --exclude="cp2k/" --exclude="plumed/" /appl/modulefiles/spack/x86_64/v2026_03 "$ROOTFS/appl/modulefiles/spack/x86_64"
 
 rsync --archive --mkpath --exclude="gcc-14.1.0-*" --exclude="gcc-14.3.0-*" --exclude="gcc-13.4.0-*" --exclude="aocc-5.0.0-*" --exclude="aocc-5.1.0-*" /appl/soft/spack/core/v2026_03/x86_64/compilers_ec "$ROOTFS/appl/soft/spack/core/v2026_03/x86_64"
 
