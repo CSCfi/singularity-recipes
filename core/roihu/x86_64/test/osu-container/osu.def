@@ -1,8 +1,7 @@
-Bootstrap: localimage
-From: {{BASE_IMAGE}}
+Bootstrap: docker
+From: satama.csc.fi/r_installation_spack/core-cpu-gcc-15.2:v2026_03
 
 %arguments
-    BASE_IMAGE=
     NPROCS=10
     OSU_MICRO_BENCHMARKS_VERSION=7.4
 
