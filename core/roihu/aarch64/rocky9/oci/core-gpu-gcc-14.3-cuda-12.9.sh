@@ -4,7 +4,7 @@ set -eu
 CONTAINER=$(buildah from localhost/core-gpu-deps:v2026_03)
 ROOTFS=$(buildah mount $CONTAINER)
 
-rsync --archive --mkpath --exclude="gcc/15.2.0*" --exclude="gcc/13.4.0*" --exclude="git-lfs/" --exclude="nvhpc/" /appl/modulefiles/spack/aarch64 "$ROOTFS/appl/modulefiles/spack"
+rsync --archive --mkpath --exclude="gcc/15.2.0*" --exclude="gcc/13.4.0*" --exclude="git-lfs/" --exclude="nvhpc/" --exclude="gromacs/" /appl/modulefiles/spack/aarch64 "$ROOTFS/appl/modulefiles/spack"
 
 rsync --archive --mkpath --exclude="gcc-15.2.0-*" --exclude="gcc-13.4.0-*" /appl/soft/spack/core/v2026_03/compilers_eg "$ROOTFS/appl/soft/spack/core/v2026_03"
 
