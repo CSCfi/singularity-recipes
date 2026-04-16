@@ -1,5 +1,5 @@
 Bootstrap: docker
-From: satama.csc.fi/r_installation_spack/core-cpu-gcc-15.2:v2026_03
+From: satama.csc.fi/r_installation_spack/core-cpu-gcc-15.2.0:v2026_03
 
 %arguments
     NPROCS=10
