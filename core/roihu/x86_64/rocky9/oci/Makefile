@@ -2,6 +2,6 @@
 core-cpu-deps:
 	buildah unshare ./core-cpu-deps.sh
 
-.PHONY: core-cpu-gcc-15.2
-core-cpu-gcc-15.2:
-	buildah unshare ./core-cpu-gcc-15.2.sh
+.PHONY: core-cpu-gcc-15.2.0
+core-cpu-gcc-15.2.0:
+	buildah unshare ./core-cpu-gcc-15.2.0.sh

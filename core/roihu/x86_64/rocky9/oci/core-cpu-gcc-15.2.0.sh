@@ -22,6 +22,6 @@ EOF
 
 buildah unmount $CONTAINER
 
-buildah commit $CONTAINER localhost/core-cpu-gcc-15.2:v2026_03
+buildah commit $CONTAINER localhost/core-cpu-gcc-15.2.0:v2026_03
 
-buildah tag localhost/core-cpu-gcc-15.2:v2026_03 satama.csc.fi/r_installation_spack/core-cpu-gcc-15.2:v2026_03
+buildah tag localhost/core-cpu-gcc-15.2.0:v2026_03 satama.csc.fi/r_installation_spack/core-cpu-gcc-15.2.0:v2026_03
