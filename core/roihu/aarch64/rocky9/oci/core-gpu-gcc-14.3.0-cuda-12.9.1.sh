@@ -22,6 +22,6 @@ EOF
 
 buildah unmount $CONTAINER
 
-buildah commit $CONTAINER localhost/core-gpu-gcc-14.3-cuda-12.9:v2026_03
+buildah commit $CONTAINER localhost/core-gpu-gcc-14.3.0-cuda-12.9.1:v2026_03
 
-buildah tag localhost/core-gpu-gcc-14.3-cuda-12.9:v2026_03 satama.csc.fi/r_installation_spack/core-gpu-gcc-14.3-cuda-12.9:v2026_03
+buildah tag localhost/core-gpu-gcc-14.3.0-cuda-12.9.1:v2026_03 satama.csc.fi/r_installation_spack/core-gpu-gcc-14.3.0-cuda-12.9.1:v2026_03
