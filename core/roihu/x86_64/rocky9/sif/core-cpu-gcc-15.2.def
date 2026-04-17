@@ -1,0 +1,24 @@
+Bootstrap: localimage
+From: {{BASE_IMAGE}}
+
+%arguments
+    BASE_IMAGE=
+
+%setup
+    # Preserve symbolic links. Do NOT dereference.
+    mkdir -p "$APPTAINER_ROOTFS/appl/modulefiles/spack/x86_64"
+    rsync --archive /appl/modulefiles/spack/x86_64/v2026_03 "$APPTAINER_ROOTFS/appl/modulefiles/spack/x86_64"
+    mkdir -p "$APPTAINER_ROOTFS/appl/soft/spack/core/v2026_03/x86_64"
+    rsync --archive --exclude="gcc-14.1.0-*" --exclude="gcc-14.3.0-*" --exclude="gcc-13.4.0-*" --exclude="aocc-5.0.0-*" --exclude="aocc-5.1.0-*" /appl/soft/spack/core/v2026_03/x86_64/compilers_ec "$APPTAINER_ROOTFS/appl/soft/spack/core/v2026_03/x86_64"
+    rsync --archive /appl/soft/spack/core/v2026_03/x86_64/gcc152_ec "$APPTAINER_ROOTFS/appl/soft/spack/core/v2026_03/x86_64"
+
+%post
+    cat > /opt/activate.sh << 'EOF'
+export PATH=/appl/soft/spack/core/v2026_03/x86_64/compilers_ec/install_dir/linux-zen5/binutils-2.46.0-cqyyzre4ylslq3peezmsn6vdg3exfkkp/bin:$PATH
+. /usr/share/lmod/9.1.2/init/bash
+module use /appl/modulefiles/spack/x86_64/v2026_03/Core
+module load gcc/15.2.0
+module load ucx/1.20.0
+module load openblas/0.3.30
+module load openmpi/5.0.10
+EOF

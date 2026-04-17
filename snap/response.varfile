@@ -1,22 +1,14 @@
 # install4j response file for ESA SNAP 13.0.0
 createDesktopLinkAction$Boolean=false
 deleteSnapDir=ALL
-executeLauncherWithPythonAction$Boolean=true
+executeLauncherWithPythonAction$Boolean=false
 extendPathEnvVar$Boolean=true
 forcePython$Boolean=true
 sys.adminRights$Boolean=true
-sys.component.3552$Boolean=true
-sys.component.3573$Boolean=true
-sys.component.S1TBX$Boolean=true
-sys.component.S3TBX$Boolean=true
-sys.component.SMOS$Boolean=true
 sys.component.SNAP$Boolean=true
 sys.languageId=en
 sys.programGroupAllUsers$Boolean=false
 sys.programGroupDisabled$Boolean=false
 sys.programGroupName=ESA SNAP
 pythonExecutable=/usr/bin/python3
-sys.adminRights$Boolean=true
 sys.installationDir=/opt/snap
-sys.programGroupDisabled$Boolean=true
-
