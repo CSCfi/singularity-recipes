@@ -8,7 +8,7 @@ rsync --archive --mkpath --exclude="gcc/13.4.0*" --exclude="gcc/14.3.0*" --exclu
 
 rsync --archive --mkpath --exclude="gcc-13.4.0-*" --exclude="gcc-14.3.0-*" /appl/soft/spack/core/v2026_03/aarch64/compilers_eg "$ROOTFS/appl/soft/spack/core/v2026_03/aarch64"
 
-rsync --archive --mkpath /appl/soft/spack/core/v2026_03/aarch64/g14cu129_eg "$ROOTFS/appl/soft/spack/core/v2026_03/aarch64"
+rsync --archive --mkpath /appl/soft/spack/core/v2026_03/aarch64/g15cu131_eg "$ROOTFS/appl/soft/spack/core/v2026_03/aarch64"
 
 cat > $ROOTFS/opt/activate.sh << EOF
 export PATH=/appl/soft/spack/core/v2026_03/aarch64/compilers_eg/install_dir/neoverse_v2/gcc-11.5.0/binutils-2.45-iovy4e/bin:\$PATH
