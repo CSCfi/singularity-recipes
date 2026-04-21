@@ -1,5 +1,5 @@
 Bootstrap: docker
-From: satama.csc.fi/r_installation_spack/core-gpu-gcc-14.3.0-cuda-12.9.1:v2026_03
+From: satama.csc.fi/r_installation_spack/core-gpu-gcc-15.2.0-cuda-13.1.1:v2026_03
 
 %arguments
     NPROCS=10
@@ -36,5 +36,4 @@ From: satama.csc.fi/r_installation_spack/core-gpu-gcc-14.3.0-cuda-12.9.1:v2026_0
 %runscript
     . /opt/activate.sh
     module load nccl
-    export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$NCCL_INSTROOT/lib:$OPENMPI_INSTROOT/lib:$LD_LIBRARY_PATH
     exec "$@"
