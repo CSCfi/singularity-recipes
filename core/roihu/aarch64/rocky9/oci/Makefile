@@ -9,3 +9,7 @@ core-gpu-gcc-15.2.0-cuda-13.1.1:
 .PHONY: core-gpu-gcc-14.3.0-cuda-12.9.1
 core-gpu-gcc-14.3.0-cuda-12.9.1:
 	buildah unshare ./core-gpu-gcc-14.3.0-cuda-12.9.1.sh
+
+.PHONY: core-gpu-gcc-13.4.0-cuda-12.6.3
+core-gpu-gcc-13.4.0-cuda-12.6.3:
+	buildah unshare ./core-gpu-gcc-13.4.0-cuda-12.6.3.sh
