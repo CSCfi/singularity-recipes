@@ -10,5 +10,5 @@ cd ./osu
 wget -q http://mvapich.cse.ohio-state.edu/download/mvapich/osu-micro-benchmarks-${OSU_MICRO_BENCHMARKS_VERSION}.tar.gz
 tar xf osu-micro-benchmarks-${OSU_MICRO_BENCHMARKS_VERSION}.tar.gz
 cd osu-micro-benchmarks-${OSU_MICRO_BENCHMARKS_VERSION}
-./configure CC=$(which mpicc) CXX=$(which mpicxx) CFLAGS=-O3
+./configure CC=mpicc CXX=mpicxx CFLAGS=-O3
 make -j${NPROCS}
