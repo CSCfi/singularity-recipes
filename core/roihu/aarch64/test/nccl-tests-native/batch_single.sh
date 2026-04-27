@@ -12,8 +12,8 @@
 #SBATCH --exclusive
 module purge
 module load gcc/14.3.0
-module load openmpi/5.0.8
-module load cuda/12.9.1
-module load nccl/2.28.7-1
+module load openmpi
+module load cuda
+module load nccl
 module list
 srun ./nccl-tests/build/all_reduce_perf -b 8 -e 128M -f 2 -g 4
