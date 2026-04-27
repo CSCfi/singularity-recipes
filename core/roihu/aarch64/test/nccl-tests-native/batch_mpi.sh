@@ -16,4 +16,4 @@ module load openmpi
 module load cuda
 module load nccl
 module list
-srun ./nccl-tests/build/all_reduce_perf_mpi -b 8 -e 128M -f 2 -g 1
+srun ./nccl-tests-2.18.3/build/all_reduce_perf_mpi -b 8 -e 128M -f 2 -g 1
