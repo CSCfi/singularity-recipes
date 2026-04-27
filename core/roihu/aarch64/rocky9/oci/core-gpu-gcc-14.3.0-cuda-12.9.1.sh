@@ -17,7 +17,7 @@ module use /appl/modulefiles/spack/aarch64/v2026_03/Core
 module load gcc/14.3.0
 module load cuda/12.9.1
 module load openblas/0.3.30
-module load openmpi/5.0.8
+module load openmpi/5.0.10
 EOF
 
 buildah unmount $CONTAINER
