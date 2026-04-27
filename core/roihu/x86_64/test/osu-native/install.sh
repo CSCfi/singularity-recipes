@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 module purge
-module load gcc openmpi
+module load gcc
+module load openmpi
 
 NPROCS=10
 OSU_MICRO_BENCHMARKS_VERSION=7.4
