@@ -15,6 +15,7 @@ export PATH=/appl/soft/spack/core/v2026_03/aarch64/compilers_eg/install_dir/neov
 . /usr/share/lmod/9.1.2/init/bash
 module use /appl/modulefiles/spack/aarch64/v2026_03/Core
 module load gcc/14.3.0
+module load ucx/1.20.0
 module load cuda/12.9.1
 module load openblas/0.3.30
 module load openmpi/5.0.10
