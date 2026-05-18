@@ -61,8 +61,6 @@ buildah run $CONTAINER -- dnf install -y --allowerasing \
     libevent-devel-2.1.12 \
     rdma-core-2510.0.10 \
     rdma-core-devel-2510.0.10 \
-    libxpmem-2510.0.16 \
-    libxpmem-devel-2510.0.16 \
     Lmod-9.1.2 \
     gdrcopy-2.5.1 \
     gdrcopy-devel-2.5.1
