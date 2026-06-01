@@ -1,0 +1,36 @@
+## CloudCompare (Singularity container)
+
+Bootstrap: docker
+From: ubuntu:26.04
+
+%post
+    ## for apt to be noninteractive
+    export DEBIAN_FRONTEND=noninteractive
+    export DEBCONF_NONINTERACTIVE_SEEN=true
+    export TZ=Europe/Helsinki
+
+    apt-get -y update
+    apt-get -y upgrade
+    apt-get -y install --fix-missing \
+            qtbase5-dev \
+            qt5-qmake \
+            qtbase5-dev-tools \
+            qttools5-dev \
+            qttools5-dev-tools \
+            libqt5svg5-dev \
+            libqt5opengl5-dev \
+            libqt5websockets5-dev \
+            binutils \
+            cloudcompare
+
+#    strip --remove-section=.note.ABI-tag /lib/x86_64-linux-gnu/libQt5Core.sos
+    apt-get clean
+
+%environment
+
+## General environment variables
+
+  export LC_ALL=C.UTF-8
+  export LANG=C.UTF-8
+  export CC=gcc
+  unset MANPATH
