@@ -23,8 +23,10 @@ From: satama.csc.fi/r_installation_spack/core-gpu-gcc-13.4.0-cuda-12.6.3:v2026_0
     export UV_TOOL_DIR=/opt/uv
     export UV_COMPILE_BYTECODE=1
 
-    # Clone alphafold3 repo
-    git clone https://github.com/google-deepmind/alphafold3.git /opt/alphafold3
+    # Download alphafold3
+    wget https://github.com/google-deepmind/alphafold3/archive/refs/tags/v3.0.4.tar.gz --directory-prefix /opt
+    (cd /opt && echo "a12bfec74fe9670d5d6e1897450ccf968422e0b87743ffee82ff0cb4c76f1923 v3.0.4.tar.gz" | sha256sum --check) && \
+    (cd /opt && tar zxf v3.0.4.tar.gz && mv alphafold3-3.0.4 alphafold3 && rm v3.0.4.tar.gz)
 
     # Download, check hash, and extract the HMMER source code.
     mkdir /hmmer_build /hmmer ; \
