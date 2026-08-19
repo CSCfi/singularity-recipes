@@ -49,7 +49,7 @@ From: satama.csc.fi/r_installation_spack/core-gpu-gcc-13.4.0-cuda-12.6.3:v2026_0
     cd /opt/alphafold3
     uv venv --python 3.12 .venv
     . .venv/bin/activate
-    uv sync
+    uv sync --frozen --all-groups --no-editable
     uv run build_data
 
 %runscript

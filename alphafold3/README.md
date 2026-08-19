@@ -11,7 +11,8 @@ module purge  # avoids polluting the module system within the container
 
 ```bash
 apptainer run --bind=$(csc-common-bind) --nv alphafold3.sif uv run python3 /opt/alphafold3/run_alphafold.py --help
-e``
+e
+```
 
 ```bash
 apptainer run --bind=$(csc-common-bind) --nv alphafold3.sif uv run python3 /opt/alphafold3/run_alphafold_data_test.py
