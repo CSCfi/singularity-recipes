@@ -2,6 +2,7 @@ AlphaFold3 container adapted from the official container recipe and installation
 
 - https://github.com/google-deepmind/alphafold3
 - https://github.com/google-deepmind/alphafold3/blob/main/docs/installation.md
+- https://github.com/google-deepmind/alphafold3/blob/main/docker/Dockerfile
 
 Roihu-GPU (`roihu/aarch64`):
 
