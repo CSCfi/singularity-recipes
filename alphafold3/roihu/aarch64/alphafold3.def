@@ -55,6 +55,7 @@ From: satama.csc.fi/r_installation_spack/core-gpu-gcc-13.4.0-cuda-12.6.3:v2026_0
 %runscript
     . /opt/activate.sh
     . /opt/alphafold3/.venv/bin/activate
+    export PATH=/hmmer/bin:$PATH
     export XLA_FLAGS="--xla_gpu_enable_triton_gemm=false"
     export XLA_PYTHON_CLIENT_PREALLOCATE=true
     export XLA_CLIENT_MEM_FRACTION=0.95
