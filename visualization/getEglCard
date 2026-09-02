@@ -1,2 +1,12 @@
 #!/bin/bash
-tee /dev/dri/card* 2>&1<<<0 | grep I | cut -d ':' -f2 | tr -d ' ' | head -n1
+output=$(timeout 5 nvidia-smi --query-gpu=gpu_bus_id --format=csv,noheader)
+exit_code=$?
+if [ "$exit_code" -ne 0 ]; then
+  >&2 echo "nvidia-smi exited with status $exit_code: $output"
+  exit 1
+fi
+
+card=$(echo "$output" | cut -c 5- | tr "[:upper:]" "[:lower:]")
+card_path="/dev/dri/by-path/pci-$card-card"
+[ -e "$card_path" ] || >&2 echo "$card_path does not exist"
+readlink -e "$card_path"
