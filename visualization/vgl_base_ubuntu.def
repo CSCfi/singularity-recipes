@@ -17,12 +17,12 @@ From: ubuntu:22.04
     apt-get install -y xz-utils
     wget -O virtualgl_${VGL_VERSION}_amd64.deb https://github.com/VirtualGL/virtualgl/releases/download/${VGL_VERSION}/virtualgl_${VGL_VERSION}_amd64.deb
     apt-get install -y ./virtualgl_${VGL_VERSION}_amd64.deb
-    wget https://us.download.nvidia.com/tesla/535.161.07/NVIDIA-Linux-x86_64-535.161.07.run
-    sh NVIDIA-Linux-x86_64-535.161.07.run -a -N --ui=none --no-kernel-module --no-x-check --skip-depmod --no-nvidia-modprobe
+    wget https://us.download.nvidia.com/tesla/595.71.05/NVIDIA-Linux-x86_64-595.71.05.run
+    sh NVIDIA-Linux-x86_64-595.71.05.run -a -N --ui=none --no-kernel-module --no-x-check --skip-depmod --no-nvidia-modprobe
     vglserver_config +s +f +t +glx
 
     # Cleanup
-    rm NVIDIA-Linux-x86_64-535.161.07.run
+    rm NVIDIA-Linux-x86_64-595.71.05.run
     rm virtualgl_${VGL_VERSION}_amd64.deb
 
     chmod u=rwx,go=rx /usr/bin/vglrun_wrapper

@@ -1,5 +1,5 @@
 Bootstrap: docker
-From: rockylinux:9.3
+From: rockylinux:9.8
 
 %files
     ./getEglCard /usr/bin/getEglCard
@@ -13,8 +13,8 @@ From: rockylinux:9.3
     dnf install -y wget kmod mesa-libGL xz
     wget -O virtualgl_${VGL_VERSION}.x86_64.rpm https://github.com/VirtualGL/virtualgl/releases/download/${VGL_VERSION}/VirtualGL-${VGL_VERSION}.x86_64.rpm
     dnf install -y ./virtualgl_${VGL_VERSION}.x86_64.rpm
-    wget https://us.download.nvidia.com/tesla/535.161.07/NVIDIA-Linux-x86_64-535.161.07.run
-    sh NVIDIA-Linux-x86_64-535.161.07.run -a -N --ui=none --no-kernel-module --no-x-check --skip-depmod --no-nvidia-modprobe
+    wget https://us.download.nvidia.com/tesla/595.71.05/NVIDIA-Linux-x86_64-595.71.05.run
+    sh NVIDIA-Linux-x86_64-595.71.05.run -a -N --ui=none --no-kernel-module --no-x-check --skip-depmod --no-nvidia-modprobe
     vglserver_config +s +f +t +glx
     chmod u=rwx,go=rx /usr/bin/vglrun_wrapper
 
