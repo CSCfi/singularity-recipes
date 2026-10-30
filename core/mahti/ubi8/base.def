@@ -1,5 +1,0 @@
-Bootstrap: docker
-From: redhat/ubi8:latest
-
-%post
-    dnf update -y --disableplugin=subscription-manager
